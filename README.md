@@ -1,4 +1,4 @@
-# 🦷 Oexa Dental Clinic
+# Oexa Dental Clinic
 ### Dental Clinic Management System
 
 
