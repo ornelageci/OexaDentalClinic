@@ -40,3 +40,31 @@ The system sends automatic email notifications when:
 • an appointment is scheduled based on client requests  
 
 This system provides an efficient and organized solution for managing dental clinic operations and improves communication between patients, dentists, and administrators.
+
+
+
+
+
+
+# Oexa Dental Clinic Management System
+
+## Overview
+This project is a full-stack dental clinic management system that allows managing patients, appointments, and payments.
+
+## Features
+- User authentication (Login/Register)
+- Patient management
+- Appointment scheduling
+- Payment handling
+- Admin dashboard
+
+## Tech Stack
+- Backend: (add your tech here - e.g., ASP.NET / Node.js / Java)
+- Frontend: (React / Angular / etc.)
+- Database: (MySQL / SQL Server / etc.)
+
+## How to Run
+
+### Backend
+1. Open Backend folder
+2. Run the server using your IDE or:
