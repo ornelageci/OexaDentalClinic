@@ -32,11 +32,19 @@ namespace OexaDentalClinic.Api.Models
         [Required, MaxLength(150)]
         public string ServiceNeeded { get; set; } = null!;
 
-        // Optional notes provided by the patient
         public string? AdditionalNotes { get; set; }
 
-        // Timestamp when the appointment record was created
-        // Defaults to current UTC time
+        [Required, MaxLength(30)]
+        public string Status { get; set; } = "Booked";
+
+        public bool IsSpecialAppointment { get; set; }
+
+        public int? PatientUserId { get; set; }
+
+        public int? AssignedDentistUserId { get; set; }
+
+        public bool ReminderSent { get; set; }
+
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }
 }

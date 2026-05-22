@@ -1,69 +1,79 @@
 document.addEventListener('DOMContentLoaded', function() {
-    if (!oexaRequireRole('manager')) return;
+    if (!requireStaffRole('manager')) return;
+    document.getElementById('logoutBtn').addEventListener('click', staffLogout);
 
-    const logoutBtn = document.getElementById('logoutBtn');
-    if (logoutBtn) logoutBtn.addEventListener('click', oexaLogout);
+    document.getElementById('checkinBtn').addEventListener('click', async function() {
+        const id = document.getElementById('checkinId').value.trim();
+        if (!id) return;
+        await apiPatch('/api/Appointments/' + id + '/status', { status: 'InProgress' });
+        document.getElementById('checkinMsg').textContent = 'Checked in #' + id;
+        loadList();
+    });
 
-    const checkinId = document.getElementById('checkinAppointmentId');
-    const checkinBtn = document.getElementById('checkinBtn');
-    const checkinStatus = document.getElementById('checkinStatus');
+    document.getElementById('checkoutBtn').addEventListener('click', async function() {
+        const id = document.getElementById('checkoutId').value.trim();
+        const amount = Number(document.getElementById('amount').value || 0);
+        if (!id) return;
+        await apiPatch('/api/Appointments/' + id + '/status', { status: 'Completed' });
+        const receipt = await apiPost('/api/Receipts', { appointmentId: Number(id), totalAmount: amount });
+        document.getElementById('checkoutMsg').textContent = 'Receipt: ' + receipt.receiptNumber + ' | Total: ' + receipt.totalAmount;
+        loadList();
+    });
 
-    const checkoutId = document.getElementById('checkoutAppointmentId');
-    const checkoutBtn = document.getElementById('checkoutBtn');
-    const checkoutStatus = document.getElementById('checkoutStatus');
-    const receiptBox = document.getElementById('receiptBox');
-    const receiptText = document.getElementById('receiptText');
+    document.getElementById('rescheduleBtn').addEventListener('click', async function() {
+        const id = document.getElementById('actionId').value.trim();
+        const date = document.getElementById('newDate').value;
+        const time = document.getElementById('newTime').value;
+        const appt = await apiGet('/api/Appointments/' + id);
+        await apiPut('/api/Appointments/' + id + '/reschedule', {
+            firstName: appt.firstName,
+            lastName: appt.lastName,
+            email: appt.email,
+            phoneNumber: appt.phoneNumber,
+            preferredDate: date,
+            preferredTime: time,
+            serviceNeeded: appt.serviceNeeded
+        });
+        alert('Rescheduled');
+        loadList();
+    });
 
-    function setState(key, value) {
-        localStorage.setItem(key, JSON.stringify(value));
-    }
+    document.getElementById('cancelBtn').addEventListener('click', async function() {
+        const id = document.getElementById('actionId').value.trim();
+        await apiPost('/api/Appointments/' + id + '/cancel', {});
+        alert('Cancelled');
+        loadList();
+    });
 
-    function getState(key) {
-        const raw = localStorage.getItem(key);
-        if (!raw) return null;
-        try { return JSON.parse(raw); } catch { return null; }
-    }
+    apiGet('/api/Users/dentists').then(function(dentists) {
+        document.getElementById('assignDentist').innerHTML = dentists.map(function(d) {
+            return '<option value="' + d.id + '">Dr. ' + d.firstName + ' ' + d.lastName + ' (' + d.dentistServiceKey + ')</option>';
+        }).join('');
+    });
 
-    function makeReceiptNumber() {
-        return 'R-' + Date.now();
-    }
+    document.getElementById('assignBtn').addEventListener('click', async function() {
+        const apptId = document.getElementById('assignApptId').value.trim();
+        const dentistId = document.getElementById('assignDentist').value;
+        if (!apptId || !dentistId) return;
+        await apiPatch('/api/Appointments/' + apptId + '/assign', { dentistUserId: Number(dentistId) });
+        alert('Assigned');
+        loadList();
+    });
 
-    if (checkinBtn) {
-        checkinBtn.addEventListener('click', function() {
-            const id = (checkinId && checkinId.value || '').trim();
-            if (!id) {
-                if (checkinStatus) checkinStatus.textContent = 'Enter an appointment ID.';
-                return;
-            }
-            const key = 'oexa_appt_' + id;
-            const state = getState(key) || {};
-            state.checkedIn = true;
-            state.checkedInAt = new Date().toISOString();
-            setState(key, state);
-            if (checkinStatus) checkinStatus.textContent = 'Checked in appointment #' + id;
+    apiGet('/api/Reports/summary').then(function(s) {
+        document.getElementById('financeSummary').innerHTML =
+            '<p>Revenue: <strong>' + s.totalRevenue + '</strong></p>' +
+            '<p>Receipts: ' + s.receiptsCount + '</p>' +
+            '<p>Completed visits: ' + s.completed + '</p>';
+    });
+
+    function loadList() {
+        apiGet('/api/Appointments').then(function(items) {
+            const body = document.getElementById('apptBody');
+            body.innerHTML = items.map(function(a) {
+                return '<tr><td>' + a.id + '</td><td>' + a.firstName + ' ' + a.lastName + '</td><td>' + formatDateTime(a.preferredDateTime) + '</td><td>' + statusBadge(a.status) + '</td></tr>';
+            }).join('');
         });
     }
-
-    if (checkoutBtn) {
-        checkoutBtn.addEventListener('click', function() {
-            const id = (checkoutId && checkoutId.value || '').trim();
-            if (!id) {
-                if (checkoutStatus) checkoutStatus.textContent = 'Enter an appointment ID.';
-                return;
-            }
-            const key = 'oexa_appt_' + id;
-            const state = getState(key) || {};
-            state.checkedOut = true;
-            state.checkedOutAt = new Date().toISOString();
-            state.receiptNumber = makeReceiptNumber();
-            setState(key, state);
-
-            if (checkoutStatus) checkoutStatus.textContent = 'Checked out appointment #' + id;
-            if (receiptBox && receiptText) {
-                receiptBox.style.display = 'block';
-                receiptText.textContent = 'Appointment #' + id + ' | Receipt: ' + state.receiptNumber;
-            }
-        });
-    }
+    loadList();
 });
-

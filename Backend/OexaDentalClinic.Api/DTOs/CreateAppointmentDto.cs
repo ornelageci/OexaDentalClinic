@@ -36,8 +36,11 @@ namespace OexaDentalClinic.Api.DTOs
         [Required]
         public string ServiceNeeded { get; set; } = null!;
 
-        // Optional additional notes from the patient
         public string? AdditionalNotes { get; set; }
+
+        public bool IsSpecialAppointment { get; set; }
+
+        public int? PatientUserId { get; set; }
     }
 }
 

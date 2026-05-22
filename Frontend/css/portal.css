@@ -1,0 +1,33 @@
+.portal-body {
+    background-color: #f4f7f9;
+    min-height: 100vh;
+}
+
+.portal-nav {
+    background-color: #fff;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+}
+
+.portal-card {
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+}
+
+.portal-table th {
+    font-size: 0.9rem;
+    color: #1e3a8a;
+}
+
+.portal-stat {
+    background: #fff;
+    border-radius: 10px;
+    padding: 1rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.portal-stat h3 {
+    margin: 0;
+    color: #1e3a8a;
+    font-size: 1.5rem;
+}

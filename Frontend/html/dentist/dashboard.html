@@ -2,79 +2,46 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dentist Dashboard - Oexa Dental Clinic</title>
+    <title>Dentist Dashboard</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="../../css/styles.css">
+    <link rel="stylesheet" href="../../css/portal.css">
 </head>
-<body>
-    <nav class="navbar navbar-expand-lg navbar-light bg-light fixed-top">
+<body class="portal-body">
+    <nav class="navbar portal-nav py-3">
         <div class="container">
-            <a class="navbar-brand" href="../user/index.html">OEXA Dental Clinic</a>
-            <div class="ms-auto d-flex gap-2">
-                <button class="btn btn-primary" type="button" id="logoutBtn">Logout</button>
-            </div>
+            <span class="navbar-brand" id="dentistName">Dentist</span>
+            <button class="btn btn-outline-secondary btn-sm" id="logoutBtn">Logout</button>
         </div>
     </nav>
 
-    <section class="py-5 mt-5">
+    <section class="py-4">
         <div class="container">
-            <div class="row mb-4">
-                <div class="col-lg-12 text-center">
-                    <h1 class="display-6 fw-bold">Dentist</h1>
-                    <p class="text-muted">View your appointments (basic filter).</p>
+            <h2 class="mb-3">My Schedule</h2>
+            <div class="card portal-card mb-4">
+                <div class="card-body table-responsive">
+                    <table class="table table-sm">
+                        <thead><tr><th>ID</th><th>Patient</th><th>Date</th><th>Status</th><th>Actions</th></tr></thead>
+                        <tbody id="scheduleBody"></tbody>
+                    </table>
                 </div>
             </div>
 
-            <div class="row justify-content-center mb-3">
-                <div class="col-lg-6">
-                    <select class="form-control" id="dentistSelect">
-                        <option value="general">Dr. Alkeo Gaci (General)</option>
-                        <option value="orthodontics">Dr. Ornela Geci (Orthodontics)</option>
-                        <option value="cosmetic">Dr. Xhule Metaj (Cosmetic)</option>
-                        <option value="pediatric">Dr. Alesja Toci (Pediatric)</option>
-                        <option value="oral-surgery">Dr. Elvis Sula (Oral Surgery)</option>
-                    </select>
-                </div>
-            </div>
-
-            <div class="row justify-content-center">
-                <div class="col-lg-10">
-                    <div class="card">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-center mb-3">
-                                <div class="text-muted small">Source: backend API</div>
-                                <button type="button" class="btn btn-primary" id="refreshAppointments">Refresh</button>
-                            </div>
-
-                            <div class="table-responsive">
-                                <table class="table table-striped align-middle mb-0">
-                                    <thead>
-                                        <tr>
-                                            <th>ID</th>
-                                            <th>Name</th>
-                                            <th>Date</th>
-                                            <th>Service</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="appointmentsTableBody">
-                                        <tr>
-                                            <td colspan="4" class="text-center text-muted">Loading...</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-
-                        </div>
-                    </div>
+            <div class="card portal-card">
+                <div class="card-body">
+                    <h4>Treatment record (selected appointment)</h4>
+                    <input class="form-control mb-2" id="treatmentApptId" placeholder="Appointment ID">
+                    <textarea class="form-control mb-2" id="diagnosis" placeholder="Diagnosis" rows="2"></textarea>
+                    <textarea class="form-control mb-2" id="treatment" placeholder="Treatment performed" rows="2"></textarea>
+                    <textarea class="form-control mb-2" id="recommendations" placeholder="Recommendations" rows="2"></textarea>
+                    <input class="form-control mb-2" id="medication" placeholder="Medication prescribed">
+                    <button class="btn btn-primary" id="saveTreatment">Save treatment</button>
                 </div>
             </div>
         </div>
     </section>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="../../js/portal/guard.js"></script>
+    <script src="../../js/shared/api.js"></script>
+    <script src="../../js/portal/auth.js"></script>
     <script src="../../js/dentist/dashboard.js"></script>
 </body>
 </html>
-

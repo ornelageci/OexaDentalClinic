@@ -1,67 +1,35 @@
 document.addEventListener('DOMContentLoaded', function() {
-    if (!oexaRequireRole('marketer')) return;
+    if (!requireStaffRole('marketer')) return;
+    document.getElementById('logoutBtn').addEventListener('click', staffLogout);
+    const list = document.getElementById('promoList');
 
-    const logoutBtn = document.getElementById('logoutBtn');
-    if (logoutBtn) logoutBtn.addEventListener('click', oexaLogout);
-
-    const titleInput = document.getElementById('promoTitle');
-    const addBtn = document.getElementById('addPromoBtn');
-    const statusEl = document.getElementById('promoStatus');
-    const listEl = document.getElementById('promoList');
-    if (!titleInput || !addBtn || !statusEl || !listEl) return;
-
-    function loadPromos() {
-        const raw = localStorage.getItem('oexa_promotions');
-        if (!raw) return [];
-        try { return JSON.parse(raw) || []; } catch { return []; }
+    function load() {
+        apiGet('/api/Promotions').then(function(items) {
+            list.innerHTML = items.map(function(p) {
+                return '<li class="list-group-item d-flex justify-content-between align-items-center">' +
+                    '<div><strong>' + p.title + '</strong> (' + p.discountPercent + '%)<br><small>' + p.targetAudience + '</small></div>' +
+                    '<button class="btn btn-sm btn-outline-danger" data-del="' + p.id + '">Delete</button></li>';
+            }).join('');
+            list.querySelectorAll('[data-del]').forEach(function(btn) {
+                btn.addEventListener('click', async function() {
+                    await fetch(API_BASE_URL + '/api/Promotions/' + btn.getAttribute('data-del'), { method: 'DELETE' });
+                    load();
+                });
+            });
+        });
     }
 
-    function savePromos(items) {
-        localStorage.setItem('oexa_promotions', JSON.stringify(items));
-    }
-
-    function render() {
-        const items = loadPromos();
-        if (items.length === 0) {
-            listEl.innerHTML = '<li class=\"list-group-item text-muted\">No promotions yet.</li>';
-            return;
-        }
-
-        listEl.innerHTML = items.map(function(p, idx) {
-            return (
-                '<li class=\"list-group-item d-flex justify-content-between align-items-center\">' +
-                    '<span>' + p.title + '</span>' +
-                    '<button class=\"btn btn-primary btn-sm\" data-remove=\"' + idx + '\">Remove</button>' +
-                '</li>'
-            );
-        }).join('');
-    }
-
-    addBtn.addEventListener('click', function() {
-        const title = titleInput.value.trim();
-        if (!title) {
-            statusEl.textContent = 'Enter a title.';
-            return;
-        }
-        const items = loadPromos();
-        items.unshift({ title: title, createdAt: new Date().toISOString() });
-        savePromos(items);
-        titleInput.value = '';
-        statusEl.textContent = 'Promotion added.';
-        render();
+    document.getElementById('addPromo').addEventListener('click', async function() {
+        await apiPost('/api/Promotions', {
+            title: document.getElementById('title').value,
+            description: document.getElementById('description').value,
+            discountPercent: Number(document.getElementById('discount').value),
+            startDate: document.getElementById('startDate').value,
+            endDate: document.getElementById('endDate').value,
+            targetAudience: document.getElementById('audience').value
+        });
+        load();
     });
 
-    listEl.addEventListener('click', function(e) {
-        const btn = e.target;
-        if (!btn || !btn.getAttribute) return;
-        const idx = btn.getAttribute('data-remove');
-        if (idx === null) return;
-        const items = loadPromos();
-        items.splice(Number(idx), 1);
-        savePromos(items);
-        render();
-    });
-
-    render();
+    load();
 });
-

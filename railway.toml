@@ -1,0 +1,7 @@
+[build]
+builder = "NIXPACKS"
+buildCommand = "dotnet publish Backend/OexaDentalClinic.Api/OexaDentalClinic.Api.csproj -c Release -o /app/out"
+
+[deploy]
+startCommand = "dotnet /app/out/OexaDentalClinic.Api.dll"
+restartPolicyType = "ON_FAILURE"

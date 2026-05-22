@@ -17,6 +17,9 @@ document.addEventListener('DOMContentLoaded', function() {
                         <li><a href="services.html">Services</a></li>
                         <li><a href="staff.html">Our Staff</a></li>
                         <li><a href="book-appointment.html">Book Appointment</a></li>
+                        <li><a href="offers.html">Offers</a></li>
+                        <li><a href="login.html">Login</a></li>
+                        <li><a href="register.html">Register</a></li>
                         <li><a href="contact.html">Contact Us</a></li>
                         <li><a href="../portal/login.html">Staff Login</a></li>
                     </ul>

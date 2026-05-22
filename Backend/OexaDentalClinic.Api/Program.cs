@@ -1,57 +1,59 @@
-using Microsoft.EntityFrameworkCore; // Provides EF Core database configuration
-using OexaDentalClinic.Api.Data; // AppDbContext reference
+using Microsoft.EntityFrameworkCore;
+using OexaDentalClinic.Api.Configuration;
+using OexaDentalClinic.Api.Data;
+using OexaDentalClinic.Api.Services;
 
-// Creates the WebApplication builder (reads args, config, services)
 var builder = WebApplication.CreateBuilder(args);
 
-// Registers MVC controllers
 builder.Services.AddControllers();
-
-// Enables minimal API endpoint discovery (used by Swagger)
 builder.Services.AddEndpointsApiExplorer();
-
-// Registers Swagger/OpenAPI generator
 builder.Services.AddSwaggerGen();
 
-// CORS configuration to allow requests from the frontend  
-//Cross origin resource sharing
+builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("Email"));
+builder.Services.PostConfigure<EmailSettings>(options =>
+{
+    var pwd = Environment.GetEnvironmentVariable("EMAIL_SMTP_PASSWORD")
+        ?? Environment.GetEnvironmentVariable("Email__SmtpPassword");
+    if (!string.IsNullOrWhiteSpace(pwd))
+        options.SmtpPassword = pwd;
+});
+builder.Services.AddSingleton<IEmailService, EmailService>();
+builder.Services.AddHostedService<AppointmentReminderService>();
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
-        policy.AllowAnyOrigin()   // Allows requests from any origin
-              .AllowAnyHeader()   // Allows any request headers
-              .AllowAnyMethod()); // Allows any HTTP method (GET, POST, PUT, DELETE)
+    {
+        policy.AllowAnyOrigin()
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+    });
 });
 
-// Reads connection string from appsettings.json
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-
-// Registers AppDbContext with MySQL provider
+var connectionString = ConnectionStringHelper.Resolve(builder.Configuration);
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseMySQL(connectionString!)
-);
+    options.UseMySQL(connectionString));
+
+var port = Environment.GetEnvironmentVariable("PORT");
+if (!string.IsNullOrWhiteSpace(port))
+    builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 
 var app = builder.Build();
 
-// Enables Swagger UI only in Development environment
-if (app.Environment.IsDevelopment())
+using (var scope = app.Services.CreateScope())
 {
-    app.UseSwagger();    // Generates Swagger JSON
-    app.UseSwaggerUI();  // Provides Swagger UI
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    db.Database.Migrate();
+    DbSeeder.Seed(db);
 }
 
-// Applies the CORS policy globally
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
 app.UseCors("AllowFrontend");
-
-// Enables authorization middleware
-//middleware modifikon , kontrollon request dhe response
 app.UseAuthorization();
-
-// Maps controller routes (attribute routing)
 app.MapControllers();
-
-// Starts the application
 app.Run();
-
-
-//Program.cs configures services, middleware, and application startup behavior.

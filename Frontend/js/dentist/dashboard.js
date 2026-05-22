@@ -1,76 +1,47 @@
 document.addEventListener('DOMContentLoaded', function() {
-    if (!oexaRequireRole('dentist')) return;
+    const user = requireStaffRole('dentist');
+    if (!user) return;
+    document.getElementById('logoutBtn').addEventListener('click', staffLogout);
+    document.getElementById('dentistName').textContent = 'Dr. ' + user.firstName + ' ' + user.lastName;
 
-    const logoutBtn = document.getElementById('logoutBtn');
-    if (logoutBtn) logoutBtn.addEventListener('click', oexaLogout);
+    const body = document.getElementById('scheduleBody');
 
-    const select = document.getElementById('dentistSelect');
-    const tableBody = document.getElementById('appointmentsTableBody');
-    const refreshButton = document.getElementById('refreshAppointments');
-    if (!select || !tableBody || !refreshButton) return;
+    function load() {
+        apiGet('/api/Appointments?dentistId=' + user.id).then(function(items) {
+            body.innerHTML = items.map(function(a) {
+                let actions = '';
+                if (a.status === 'InProgress' || a.status === 'Booked') {
+                    actions += '<button class="btn btn-sm btn-primary me-1" data-complete="' + a.id + '">Complete</button>';
+                }
+                actions += '<button class="btn btn-sm btn-outline-secondary" data-open="' + a.id + '">Open</button>';
+                return '<tr><td>' + a.id + '</td><td>' + a.firstName + ' ' + a.lastName + '</td><td>' + formatDateTime(a.preferredDateTime) + '</td><td>' + statusBadge(a.status) + '</td><td>' + actions + '</td></tr>';
+            }).join('');
 
-    const API_BASE_URL = 'http://localhost:5095';
-
-    function formatDate(dateTimeString) {
-        if (!dateTimeString) return '';
-        const date = new Date(dateTimeString);
-        if (Number.isNaN(date.getTime())) return dateTimeString;
-        return date.toLocaleString();
-    }
-
-    function setLoading() {
-        tableBody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">Loading...</td></tr>';
-    }
-
-    function setEmpty() {
-        tableBody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">No appointments.</td></tr>';
-    }
-
-    function setError() {
-        tableBody.innerHTML = '<tr><td colspan="4" class="text-center text-danger">Could not load appointments.</td></tr>';
-    }
-
-    function renderRows(items) {
-        if (!items || items.length === 0) {
-            setEmpty();
-            return;
-        }
-
-        tableBody.innerHTML = items.map(function(a) {
-            const name = (a.firstName || '') + ' ' + (a.lastName || '');
-            return (
-                '<tr>' +
-                    '<td>' + (a.id ?? '') + '</td>' +
-                    '<td>' + name.trim() + '</td>' +
-                    '<td>' + formatDate(a.preferredDateTime) + '</td>' +
-                    '<td>' + (a.serviceNeeded ?? '') + '</td>' +
-                '</tr>'
-            );
-        }).join('');
-    }
-
-    function loadAppointments() {
-        setLoading();
-        const serviceKey = select.value;
-
-        fetch(API_BASE_URL + '/api/Appointments')
-            .then(function(res) {
-                if (!res.ok) throw new Error('Request failed');
-                return res.json();
-            })
-            .then(function(items) {
-                const filtered = (items || []).filter(function(a) {
-                    return (a.serviceNeeded || '') === serviceKey;
+            body.querySelectorAll('[data-complete]').forEach(function(btn) {
+                btn.addEventListener('click', async function() {
+                    await apiPatch('/api/Appointments/' + btn.getAttribute('data-complete') + '/status', { status: 'Completed' });
+                    load();
                 });
-                renderRows(filtered);
-            })
-            .catch(function() {
-                setError();
             });
+            body.querySelectorAll('[data-open]').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    document.getElementById('treatmentApptId').value = btn.getAttribute('data-open');
+                });
+            });
+        });
     }
 
-    select.addEventListener('change', loadAppointments);
-    refreshButton.addEventListener('click', loadAppointments);
-    loadAppointments();
-});
+    document.getElementById('saveTreatment').addEventListener('click', async function() {
+        const id = document.getElementById('treatmentApptId').value.trim();
+        if (!id) return;
+        await apiPut('/api/Treatments/' + id, {
+            diagnosis: document.getElementById('diagnosis').value,
+            treatmentPerformed: document.getElementById('treatment').value,
+            recommendations: document.getElementById('recommendations').value,
+            medicationPrescribed: document.getElementById('medication').value
+        });
+        alert('Treatment saved');
+    });
 
+    load();
+});

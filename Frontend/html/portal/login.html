@@ -5,27 +5,35 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Staff Login - Oexa Dental Clinic</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="../../css/styles.css">
+    <link rel="stylesheet" href="../../css/portal.css">
 </head>
-<body>
-    <section class="py-5 mt-5">
+<body class="portal-body">
+    <section class="py-5">
         <div class="container">
             <div class="row justify-content-center">
-                <div class="col-lg-6">
-                    <div class="card">
-                        <div class="card-body">
-                            <h1 class="h3 fw-bold mb-3 text-center">Staff Login</h1>
-                            <p class="text-muted text-center mb-4">Select your role to enter the system.</p>
+                <div class="col-lg-5">
+                    <div class="card portal-card">
+                        <div class="card-body p-4">
+                            <h1 class="h4 fw-bold text-center mb-1">Staff Login</h1>
+                            <p class="text-muted text-center mb-4">Admin, Manager, Marketer, Dentist</p>
 
-                            <div class="d-grid gap-2">
-                                <button class="btn btn-primary" data-role="admin">Admin</button>
-                                <button class="btn btn-primary" data-role="manager">Manager</button>
-                                <button class="btn btn-primary" data-role="marketer">Marketer</button>
-                                <button class="btn btn-primary" data-role="dentist">Dentist</button>
+                            <form id="staffLoginForm">
+                                <div class="mb-3">
+                                    <label class="form-label" for="email">Email</label>
+                                    <input type="email" class="form-control" id="email" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label" for="password">Password</label>
+                                    <input type="password" class="form-control" id="password" required>
+                                </div>
+                                <button type="submit" class="btn btn-primary w-100">Login</button>
+                            </form>
+
+                            <div class="small text-muted mt-3">
+                                Demo: admin@oexa.com / admin123
                             </div>
-
-                            <div class="text-center mt-4">
-                                <a href="../user/index.html" class="text-decoration-none">Back to website</a>
+                            <div class="text-center mt-3">
+                                <a href="../user/index.html">Back to website</a>
                             </div>
                         </div>
                     </div>
@@ -34,8 +42,7 @@
         </div>
     </section>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="../../js/shared/api.js"></script>
     <script src="../../js/portal/auth.js"></script>
 </body>
 </html>
-
