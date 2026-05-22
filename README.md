@@ -2,25 +2,6 @@
 
 > A modern, web-based platform that digitalises and optimises the full operational workflow of a dental clinic — connecting patients, dentists, managers, and marketers through a single, role-driven environment.
 
-![Version](https://img.shields.io/badge/version-1.0.0-0D7377?style=flat-square)
-![Status](https://img.shields.io/badge/status-In%20Development-14A085?style=flat-square)
-![License](https://img.shields.io/badge/license-Academic-0B1F3A?style=flat-square)
-![Roles](https://img.shields.io/badge/user%20roles-4-C9922A?style=flat-square)
-![Scenarios](https://img.shields.io/badge/user%20scenarios-25-0D7377?style=flat-square)
-
----
-
-## Table of Contents
-
-- [Project Overview](#-project-overview)
-- [Project Objectives](#-project-objectives)
-- [System Actors](#-system-actors)
-- [Core Features](#-core-features)
-- [System Architecture](#-system-architecture)
-- [Technologies Used](#-technologies-used)
-- [Security & Reliability](#-security--reliability)
-- [Future Enhancements](#-future-enhancements)
-
 ---
 
 ## Project Overview
