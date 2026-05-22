@@ -1,0 +1,14 @@
+**/bin/
+**/obj/
+**/.git/
+**/.vs/
+Frontend/
+Diagrams/
+User-Cases/
+User-Scenarios/
+User-Stories/
+Case-Study/
+requirements/
+OexaDentalClinik.MeetingReport./
+*.md
+**/*.Development.json
