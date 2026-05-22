@@ -141,9 +141,13 @@ namespace OexaDentalClinic.Api.Controllers
             {
                 return BadRequest(new { error = ex.Message });
             }
-            catch (InvalidOperationException)
+            catch (InvalidOperationException ex)
             {
-                return BadRequest(new { error = "Invalid treatment selected." });
+                return BadRequest(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = "Could not load time slots.", detail = ex.Message });
             }
         }
 

@@ -23,10 +23,9 @@ namespace OexaDentalClinic.Api.Services
 
         public async Task<List<DentalProblem>> GetProblemsForKeysAsync(IEnumerable<string> keys)
         {
-            var list = keys.ToList();
-            var problems = await _db.DentalProblems
-                .Where(p => list.Contains(p.Key))
-                .ToListAsync();
+            var list = keys.Select(k => k.Trim().ToLowerInvariant()).Distinct().ToList();
+            var all = await _db.DentalProblems.ToListAsync();
+            var problems = all.Where(p => list.Contains(p.Key.ToLowerInvariant())).ToList();
 
             if (problems.Count != list.Count)
                 throw new InvalidOperationException("One or more treatments are invalid.");
@@ -36,7 +35,8 @@ namespace OexaDentalClinic.Api.Services
 
         public int GetTotalDurationMinutes(IEnumerable<DentalProblem> problems)
         {
-            return problems.Sum(p => p.DurationMinutes);
+            var total = problems.Sum(p => p.DurationMinutes > 0 ? p.DurationMinutes : 60);
+            return total > 0 ? total : 60;
         }
 
         public async Task<bool> IsSlotAvailableAsync(IEnumerable<string> serviceKeys, DateTime start, int? excludeAppointmentId = null)

@@ -29,7 +29,7 @@ namespace OexaDentalClinic.Api.Controllers
         {
             var today = DateTime.Today;
             var items = await _db.Promotions
-                .Where(p => p.IsActive && p.StartDate <= today && p.EndDate >= today)
+                .Where(p => p.IsActive && p.StartDate.Date <= today && p.EndDate.Date >= today)
                 .OrderByDescending(p => p.DiscountPercent)
                 .ToListAsync();
 
