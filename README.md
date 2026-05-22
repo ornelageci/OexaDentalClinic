@@ -6,7 +6,7 @@ The system provides a centralized environment where patients, dentists, managers
 
 # The platform is designed with a strong focus on:
 
-usability,
+Usability,
 efficiency,
 automation,
 and patient experience.
