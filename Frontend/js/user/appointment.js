@@ -14,6 +14,32 @@ document.addEventListener('DOMContentLoaded', function() {
         if (ph) ph.value = user.phoneNumber || '';
     }
 
+    let problems = [];
+
+    apiGet('/api/Problems').then(function(items) {
+        problems = items;
+        const sel = document.getElementById('service');
+        sel.innerHTML = '<option value="">Select your problem</option>' +
+            items.map(function(p) {
+                return '<option value="' + p.key + '">' + p.name + '</option>';
+            }).join('');
+    }).catch(function() {
+        document.getElementById('service').innerHTML = '<option value="">Could not load problems</option>';
+    });
+
+    document.getElementById('service').addEventListener('change', function() {
+        const p = problems.find(function(x) { return x.key === this.value; }.bind(this));
+        const box = document.getElementById('pricePreview');
+        if (!p || !box) return;
+        if (p.hasPromotion) {
+            box.innerHTML = '<span style="text-decoration:line-through">' + p.basePrice + ' EUR</span> ' +
+                '<span class="text-danger">-' + p.discountPercent + '%</span> ' +
+                '<strong>' + p.priceAfterDiscount + ' EUR</strong>';
+        } else {
+            box.innerHTML = '<strong>' + p.basePrice + ' EUR</strong>';
+        }
+    });
+
     form.addEventListener('submit', async function(event) {
         event.preventDefault();
 
@@ -43,23 +69,22 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        const appointmentData = {
-            firstName: firstName,
-            lastName: lastName,
-            email: email,
-            phoneNumber: phoneNumber,
-            preferredDate: preferredDate,
-            preferredTime: preferredTime,
-            serviceNeeded: serviceNeeded,
-            additionalNotes: additionalNotes || null,
-            isSpecialAppointment: isSpecial,
-            patientUserId: user ? user.id : null
-        };
-
         try {
-            const result = await apiPost('/api/Appointments', appointmentData);
-            alert('Appointment booked successfully!\nStatus: ' + result.status);
+            const result = await apiPost('/api/Appointments', {
+                firstName: firstName,
+                lastName: lastName,
+                email: email,
+                phoneNumber: phoneNumber,
+                preferredDate: preferredDate,
+                preferredTime: preferredTime,
+                serviceNeeded: serviceNeeded,
+                additionalNotes: additionalNotes || null,
+                isSpecialAppointment: isSpecial,
+                patientUserId: user ? user.id : null
+            });
+            alert('Appointment booked! Reception will assign a dentist.\nStatus: ' + result.status);
             form.reset();
+            document.getElementById('pricePreview').innerHTML = '';
         } catch (err) {
             alert('Booking failed. ' + (err.message || ''));
         }

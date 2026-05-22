@@ -17,7 +17,7 @@ builder.Services.PostConfigure<EmailSettings>(options =>
     if (!string.IsNullOrWhiteSpace(pwd))
         options.SmtpPassword = pwd;
 });
-builder.Services.AddSingleton<IEmailService, EmailService>();
+builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddHostedService<AppointmentReminderService>();
 
 builder.Services.AddCors(options =>

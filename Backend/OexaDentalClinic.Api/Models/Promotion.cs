@@ -23,6 +23,9 @@ namespace OexaDentalClinic.Api.Models
         [MaxLength(100)]
         public string? TargetAudience { get; set; }
 
+        [MaxLength(50)]
+        public string? ProblemKey { get; set; }
+
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }
 }

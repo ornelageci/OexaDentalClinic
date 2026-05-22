@@ -26,15 +26,24 @@
                 </div>
             </div>
 
-            <div class="card portal-card">
+            <div class="card portal-card mb-4">
                 <div class="card-body">
-                    <h4>Treatment record (selected appointment)</h4>
-                    <input class="form-control mb-2" id="treatmentApptId" placeholder="Appointment ID">
+                    <h4>Treatment record</h4>
+                    <input class="form-control mb-2" id="treatmentApptId" placeholder="Appointment ID" readonly>
                     <textarea class="form-control mb-2" id="diagnosis" placeholder="Diagnosis" rows="2"></textarea>
                     <textarea class="form-control mb-2" id="treatment" placeholder="Treatment performed" rows="2"></textarea>
                     <textarea class="form-control mb-2" id="recommendations" placeholder="Recommendations" rows="2"></textarea>
-                    <input class="form-control mb-2" id="medication" placeholder="Medication prescribed">
                     <button class="btn btn-primary" id="saveTreatment">Save treatment</button>
+                </div>
+            </div>
+
+            <div class="card portal-card">
+                <div class="card-body">
+                    <h4>Receipt – medications (after visit)</h4>
+                    <p class="small text-muted">Add each medication. Manager will add prices.</p>
+                    <div id="medicationList"></div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary mb-2" id="addMedBtn">+ Add medication</button>
+                    <button class="btn btn-primary" id="submitReceipt">Submit receipt to manager</button>
                 </div>
             </div>
         </div>

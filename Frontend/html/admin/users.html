@@ -16,6 +16,41 @@
     <section class="py-4">
         <div class="container">
             <h2 class="mb-3">Manage Users</h2>
+            <div class="row g-4 mb-4">
+                <div class="col-md-4">
+                    <label class="form-label">Filter by role</label>
+                    <select class="form-control" id="roleFilter">
+                        <option value="">All roles</option>
+                        <option value="Patient">Patients</option>
+                        <option value="Dentist">Dentists</option>
+                        <option value="Manager">Managers</option>
+                        <option value="Marketer">Marketers</option>
+                        <option value="Admin">Admins</option>
+                    </select>
+                </div>
+            </div>
+            <div class="card portal-card mb-4">
+                <div class="card-body">
+                    <h4>Add new user</h4>
+                    <div class="row g-2">
+                        <div class="col-md-3"><input class="form-control" id="newFirst" placeholder="First name"></div>
+                        <div class="col-md-3"><input class="form-control" id="newLast" placeholder="Last name"></div>
+                        <div class="col-md-3"><input class="form-control" id="newEmail" type="email" placeholder="Email"></div>
+                        <div class="col-md-3"><input class="form-control" id="newPass" type="password" placeholder="Password"></div>
+                        <div class="col-md-3">
+                            <select class="form-control" id="newRole">
+                                <option value="Patient">Patient</option>
+                                <option value="Dentist">Dentist</option>
+                                <option value="Manager">Manager</option>
+                                <option value="Marketer">Marketer</option>
+                                <option value="Admin">Admin</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3"><input class="form-control" id="newDentistKey" placeholder="Dentist key (general, etc.)"></div>
+                        <div class="col-md-3"><button class="btn btn-primary" id="addUserBtn">Add user</button></div>
+                    </div>
+                </div>
+            </div>
             <div class="card portal-card">
                 <div class="card-body table-responsive">
                     <table class="table table-sm">

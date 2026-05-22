@@ -37,9 +37,9 @@ namespace OexaDentalClinic.Api.Controllers
             if (await IsSlotTaken(dto.ServiceNeeded.Trim(), preferredDateTime.Value))
                 return BadRequest(new { error = "Selected time slot is not available." });
 
-            var service = dto.ServiceNeeded.Trim();
-            var dentist = await _db.Users.FirstOrDefaultAsync(u =>
-                u.Role == "Dentist" && u.DentistServiceKey == service);
+            var problemKey = dto.ServiceNeeded.Trim();
+            if (!await _db.DentalProblems.AnyAsync(p => p.Key == problemKey))
+                return BadRequest(new { error = "Invalid problem selected." });
 
             var appointment = new Appointment
             {
@@ -48,24 +48,47 @@ namespace OexaDentalClinic.Api.Controllers
                 Email = dto.Email.Trim(),
                 PhoneNumber = dto.PhoneNumber.Trim(),
                 PreferredDateTime = preferredDateTime.Value,
-                ServiceNeeded = service,
+                ServiceNeeded = problemKey,
                 AdditionalNotes = string.IsNullOrWhiteSpace(dto.AdditionalNotes) ? null : dto.AdditionalNotes.Trim(),
                 IsSpecialAppointment = dto.IsSpecialAppointment,
                 PatientUserId = dto.PatientUserId,
-                AssignedDentistUserId = dentist?.Id,
+                AssignedDentistUserId = null,
                 Status = "Booked"
             };
 
             _db.Appointments.Add(appointment);
             await _db.SaveChangesAsync();
 
-            await _email.SendAppointmentConfirmationAsync(appointment);
+            await _email.SendAppointmentBookedAsync(appointment);
 
             return CreatedAtAction(nameof(GetById), new { id = appointment.Id }, appointment);
         }
 
+        [HttpGet("unassigned")]
+        public async Task<IActionResult> GetUnassigned()
+        {
+            var appts = await _db.Appointments
+                .Where(a => a.AssignedDentistUserId == null && a.Status == "Booked")
+                .OrderBy(a => a.PreferredDateTime)
+                .ToListAsync();
+
+            var problems = await _db.DentalProblems.ToDictionaryAsync(p => p.Key, p => p.Name);
+
+            return Ok(appts.Select(a => new
+            {
+                a.Id,
+                a.FirstName,
+                a.LastName,
+                a.Email,
+                a.PreferredDateTime,
+                ProblemKey = a.ServiceNeeded,
+                ProblemName = problems.GetValueOrDefault(a.ServiceNeeded, a.ServiceNeeded),
+                a.Status
+            }));
+        }
+
         [HttpGet]
-        public async Task<IActionResult> GetAll([FromQuery] string? email, [FromQuery] string? service, [FromQuery] string? status, [FromQuery] int? dentistId)
+        public async Task<IActionResult> GetAll([FromQuery] string? email, [FromQuery] string? service, [FromQuery] string? status, [FromQuery] int? dentistId, [FromQuery] bool? unassignedOnly)
         {
             var query = _db.Appointments.AsQueryable();
 
@@ -80,6 +103,9 @@ namespace OexaDentalClinic.Api.Controllers
 
             if (dentistId.HasValue)
                 query = query.Where(a => a.AssignedDentistUserId == dentistId.Value);
+
+            if (unassignedOnly == true)
+                query = query.Where(a => a.AssignedDentistUserId == null);
 
             var result = await query.OrderBy(a => a.PreferredDateTime).ToListAsync();
             return Ok(result);
@@ -116,6 +142,7 @@ namespace OexaDentalClinic.Api.Controllers
 
             appt.Status = dto.Status;
             await _db.SaveChangesAsync();
+            await _email.SendStatusChangedAsync(appt, $"Appointment status changed to {dto.Status}.");
             return Ok(appt);
         }
 
@@ -144,9 +171,13 @@ namespace OexaDentalClinic.Api.Controllers
             if (dentist == null || dentist.Role != "Dentist")
                 return BadRequest(new { error = "Invalid dentist." });
 
+            var problem = await _db.DentalProblems.FirstOrDefaultAsync(p => p.Key == appt.ServiceNeeded);
+            if (problem != null && dentist.DentistServiceKey != problem.DentistCategoryKey)
+                return BadRequest(new { error = "This dentist does not handle the selected problem." });
+
             appt.AssignedDentistUserId = dentist.Id;
-            appt.ServiceNeeded = dentist.DentistServiceKey ?? appt.ServiceNeeded;
             await _db.SaveChangesAsync();
+            await _email.SendAppointmentAssignedAsync(appt, dentist);
             return Ok(appt);
         }
 

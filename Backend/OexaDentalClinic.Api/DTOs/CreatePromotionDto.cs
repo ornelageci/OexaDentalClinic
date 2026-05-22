@@ -18,5 +18,7 @@ namespace OexaDentalClinic.Api.DTOs
         public string EndDate { get; set; } = null!;
 
         public string? TargetAudience { get; set; }
+
+        public string? ProblemKey { get; set; }
     }
 }

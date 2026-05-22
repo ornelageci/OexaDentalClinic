@@ -12,6 +12,8 @@ namespace OexaDentalClinic.Api.Data
         public DbSet<Promotion> Promotions => Set<Promotion>();
         public DbSet<Review> Reviews => Set<Review>();
         public DbSet<Receipt> Receipts => Set<Receipt>();
+        public DbSet<ReceiptMedication> ReceiptMedications => Set<ReceiptMedication>();
         public DbSet<TreatmentRecord> TreatmentRecords => Set<TreatmentRecord>();
+        public DbSet<DentalProblem> DentalProblems => Set<DentalProblem>();
     }
 }

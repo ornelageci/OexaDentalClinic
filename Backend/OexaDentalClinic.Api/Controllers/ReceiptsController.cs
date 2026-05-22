@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using OexaDentalClinic.Api.Data;
 using OexaDentalClinic.Api.DTOs;
 using OexaDentalClinic.Api.Models;
+using OexaDentalClinic.Api.Services;
 
 namespace OexaDentalClinic.Api.Controllers
 {
@@ -11,16 +12,23 @@ namespace OexaDentalClinic.Api.Controllers
     public class ReceiptsController : ControllerBase
     {
         private readonly AppDbContext _db;
+        private readonly IEmailService _email;
 
-        public ReceiptsController(AppDbContext db)
+        public ReceiptsController(AppDbContext db, IEmailService email)
         {
             _db = db;
+            _email = email;
         }
 
-        [HttpGet]
-        public async Task<IActionResult> GetAll()
+        [HttpGet("pending")]
+        public async Task<IActionResult> GetPendingPricing()
         {
-            return Ok(await _db.Receipts.OrderByDescending(r => r.CreatedAt).ToListAsync());
+            var items = await _db.Receipts
+                .Where(r => r.Status == "PendingPricing")
+                .OrderByDescending(r => r.CreatedAt)
+                .Select(r => new { r.Id, r.AppointmentId, r.ReceiptNumber, r.CreatedAt })
+                .ToListAsync();
+            return Ok(items);
         }
 
         [HttpGet("{appointmentId:int}")]
@@ -28,37 +36,79 @@ namespace OexaDentalClinic.Api.Controllers
         {
             var receipt = await _db.Receipts.FirstOrDefaultAsync(r => r.AppointmentId == appointmentId);
             if (receipt == null) return NotFound();
-            return Ok(receipt);
+
+            var meds = await _db.ReceiptMedications
+                .Where(m => m.ReceiptId == receipt.Id)
+                .OrderBy(m => m.Id)
+                .ToListAsync();
+
+            return Ok(new { receipt, medications = meds });
         }
 
-        [HttpPost]
-        public async Task<IActionResult> Finalize([FromBody] CreateReceiptDto dto)
+        [HttpPost("medications")]
+        public async Task<IActionResult> SubmitMedications([FromBody] SubmitReceiptMedicationsDto dto)
         {
-            if (!ModelState.IsValid) return BadRequest(ModelState);
-
             var appt = await _db.Appointments.FindAsync(dto.AppointmentId);
             if (appt == null) return NotFound();
+            if (appt.Status != "Completed" && appt.Status != "InProgress")
+                return BadRequest(new { error = "Appointment must be in progress or completed." });
 
-            var existing = await _db.Receipts.FirstOrDefaultAsync(r => r.AppointmentId == dto.AppointmentId);
-            if (existing != null)
+            var receipt = await _db.Receipts.FirstOrDefaultAsync(r => r.AppointmentId == dto.AppointmentId);
+            if (receipt == null)
             {
-                existing.TotalAmount = dto.TotalAmount;
-                existing.Status = "Finalized";
+                receipt = new Receipt
+                {
+                    AppointmentId = dto.AppointmentId,
+                    ReceiptNumber = "R-" + DateTime.UtcNow.Ticks,
+                    Status = "PendingPricing",
+                    TotalAmount = 0
+                };
+                _db.Receipts.Add(receipt);
                 await _db.SaveChangesAsync();
-                return Ok(existing);
+            }
+            else
+            {
+                var old = await _db.ReceiptMedications.Where(m => m.ReceiptId == receipt.Id).ToListAsync();
+                _db.ReceiptMedications.RemoveRange(old);
             }
 
-            var receipt = new Receipt
+            foreach (var name in dto.Medications.Where(m => !string.IsNullOrWhiteSpace(m)))
             {
-                AppointmentId = dto.AppointmentId,
-                ReceiptNumber = "R-" + DateTime.UtcNow.Ticks,
-                TotalAmount = dto.TotalAmount,
-                Status = "Finalized"
-            };
+                _db.ReceiptMedications.Add(new ReceiptMedication
+                {
+                    ReceiptId = receipt.Id,
+                    Name = name.Trim()
+                });
+            }
 
-            _db.Receipts.Add(receipt);
+            receipt.Status = "PendingPricing";
             await _db.SaveChangesAsync();
-            return Ok(receipt);
+
+            return Ok(new { receipt.Id, receipt.ReceiptNumber, receipt.Status });
+        }
+
+        [HttpPut("{receiptId:int}/prices")]
+        public async Task<IActionResult> SetPrices(int receiptId, [FromBody] PriceReceiptDto dto)
+        {
+            var receipt = await _db.Receipts.FindAsync(receiptId);
+            if (receipt == null) return NotFound();
+
+            var meds = await _db.ReceiptMedications.Where(m => m.ReceiptId == receiptId).ToListAsync();
+            foreach (var line in dto.Lines)
+            {
+                var med = meds.FirstOrDefault(m => m.Id == line.MedicationId);
+                if (med != null) med.UnitPrice = line.UnitPrice;
+            }
+
+            receipt.TotalAmount = meds.Where(m => m.UnitPrice.HasValue).Sum(m => m.UnitPrice!.Value);
+            receipt.Status = "Finalized";
+            await _db.SaveChangesAsync();
+
+            var appt = await _db.Appointments.FindAsync(receipt.AppointmentId);
+            if (appt != null)
+                await _email.SendReceiptFinalizedAsync(appt, receipt, meds);
+
+            return Ok(new { receipt, medications = meds });
         }
     }
 }

@@ -51,6 +51,7 @@ namespace OexaDentalClinic.Api.Controllers
                 StartDate = start,
                 EndDate = end,
                 TargetAudience = dto.TargetAudience?.Trim(),
+                ProblemKey = dto.ProblemKey?.Trim(),
                 IsActive = true
             };
 

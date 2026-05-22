@@ -6,6 +6,19 @@ namespace OexaDentalClinic.Api.Data
     {
         public static void Seed(AppDbContext db)
         {
+            if (!db.DentalProblems.Any())
+            {
+                db.DentalProblems.AddRange(
+                    new DentalProblem { Key = "general-checkup", Name = "General check-up & tooth pain", Description = "Routine exam, cleaning, pain relief", BasePrice = 50, DentistCategoryKey = "general" },
+                    new DentalProblem { Key = "cavity-filling", Name = "Cavity filling", Description = "Fill cavities and restore teeth", BasePrice = 80, DentistCategoryKey = "general" },
+                    new DentalProblem { Key = "braces-adjustment", Name = "Braces / orthodontics", Description = "Braces fitting and adjustments", BasePrice = 120, DentistCategoryKey = "orthodontics" },
+                    new DentalProblem { Key = "teeth-whitening", Name = "Teeth whitening", Description = "Cosmetic whitening treatment", BasePrice = 150, DentistCategoryKey = "cosmetic" },
+                    new DentalProblem { Key = "child-dental", Name = "Child dental care", Description = "Pediatric dental visit", BasePrice = 60, DentistCategoryKey = "pediatric" },
+                    new DentalProblem { Key = "tooth-extraction", Name = "Tooth extraction / oral surgery", Description = "Surgical extraction", BasePrice = 200, DentistCategoryKey = "oral-surgery" }
+                );
+                db.SaveChanges();
+            }
+
             if (!db.Users.Any())
             {
                 db.Users.AddRange(
@@ -28,23 +41,25 @@ namespace OexaDentalClinic.Api.Data
                 db.Promotions.AddRange(
                     new Promotion
                     {
-                        Title = "Teeth Whitening -20%",
-                        Description = "Professional whitening package",
+                        Title = "Whitening -20%",
+                        Description = "Teeth whitening promotion",
                         DiscountPercent = 20,
                         StartDate = today,
                         EndDate = today.AddMonths(2),
                         IsActive = true,
-                        TargetAudience = "All patients"
+                        TargetAudience = "All patients",
+                        ProblemKey = "teeth-whitening"
                     },
                     new Promotion
                     {
-                        Title = "New Client Check-up Offer",
-                        Description = "First visit discount",
+                        Title = "Child visit -15%",
+                        Description = "Pediatric discount",
                         DiscountPercent = 15,
                         StartDate = today,
                         EndDate = today.AddMonths(1),
                         IsActive = true,
-                        TargetAudience = "New clients"
+                        TargetAudience = "Children",
+                        ProblemKey = "child-dental"
                     }
                 );
                 db.SaveChanges();
