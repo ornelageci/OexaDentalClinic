@@ -5,12 +5,12 @@ March 15, 2025
 
 ## Participants
 - Ornela Geci
-- Alesia
-- Aleko
-- Xhule
-- Elvis
+- Alesia Toci
+- Alkeo Gaci 
+- Xhule Metaj 
+- Elvis Sula 
 - Ornela Braho
-- Xhesi
+- Xhesi Azizaj 
 
 ## Objectives
 - Review database design
@@ -29,12 +29,12 @@ March 15, 2025
 
 ## Tasks Assigned
 - Ornela Geci → Backend controllers
-- Aleko → Authentication and database relations
-- Alesia → Login/Register UI
-- Xhule → Use case diagrams
-- Elvis → Payment integration planning
+- Alkeo Gaci  → Authentication and database relations
+- Alesia Toci→ Login/Register UI
+- Xhule Mrtaj → Use case diagrams
+- Elvis Sula → Payment integration planning
 - Ornela Braho → Notification workflow
-- Xhesi → Initial testing setup
+- Xhesi Azizaj → Initial testing setup
 
 ## Next Meeting
 March 22, 2025
