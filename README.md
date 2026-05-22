@@ -1,10 +1,10 @@
 # Oexa Dental Clinic Management System
- # Project Overview
+# Project Overview
 
 Oexa Dental Clinic Management System is a modern web-based platform developed to digitalize and optimize the daily workflow of dental clinics.
 The system provides a centralized environment where patients, dentists, managers, and marketers can efficiently interact and manage clinic operations in real time.
 
-#The platform is designed with a strong focus on:
+# The platform is designed with a strong focus on:
 
 usability,
 efficiency,
