@@ -35,6 +35,9 @@ namespace OexaDentalClinic.Api.Data
                 db.SaveChanges();
             }
 
+            EnsureDentist(db, "ornela.braho@oexa.com", "Ornela", "Braho", "general");
+            EnsureDentist(db, "xhesika.azizaj@oexa.com", "Xhesika", "Azizaj", "cosmetic");
+
             if (!db.Promotions.Any())
             {
                 var today = DateTime.UtcNow.Date;
@@ -64,6 +67,22 @@ namespace OexaDentalClinic.Api.Data
                 );
                 db.SaveChanges();
             }
+        }
+
+        private static void EnsureDentist(AppDbContext db, string email, string firstName, string lastName, string serviceKey)
+        {
+            if (db.Users.Any(u => u.Email.ToLower() == email.ToLower())) return;
+
+            db.Users.Add(new User
+            {
+                Email = email,
+                Password = "dentist123",
+                FirstName = firstName,
+                LastName = lastName,
+                Role = "Dentist",
+                DentistServiceKey = serviceKey
+            });
+            db.SaveChanges();
         }
     }
 }

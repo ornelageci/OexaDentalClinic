@@ -6,179 +6,98 @@
     <title>Our Staff - Oexa Dental Clinic</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../css/styles.css">
-
-    <!-- Extra styles for staff cards & photos -->
-    <style>
-        .staff-section {
-            background-color: #f8f9fa;
-        }
-
-        .staff-card {
-            border: none;
-            border-radius: 16px;
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
-            padding: 20px;
-        }
-
-        .staff-image {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            margin-bottom: 1rem;
-        }
-
-        .staff-photo {
-            width: 150px;
-            height: 150px;
-            border-radius: 50%;
-            object-fit: cover;
-            object-position: center;
-            display: block;
-            border: 3px solid #0d6efd; /* optional: nice border around the circle */
-        }
-
-        .staff-card .card-title {
-            margin-top: 0.5rem;
-            margin-bottom: 0.25rem;
-        }
-
-        .staff-card .card-text {
-            text-align: justify;
-        }
-
-        @media (min-width: 992px) {
-            /* Ensure equal height cards on large screens */
-            .staff-card {
-                height: 100%;
-            }
-        }
-    </style>
 </head>
 <body>
-    <!-- Navbar -->
-    <nav class="navbar navbar-expand-lg navbar-light bg-light fixed-top" id="navbar"></nav>
+    <nav class="navbar fixed-top" id="navbar"></nav>
 
-    <!-- Staff Section -->
-    <section class="staff-section py-5 mt-5">
+    <section class="staff-section">
         <div class="container">
-            <div class="row">
-                <div class="col-lg-12 text-center mb-5">
-                    <h1 class="display-4 fw-bold">Our Staff</h1>
-                    <p class="lead">Meet Our Experienced Dental Professionals</p>
-                </div>
+            <div class="section-title fade-in-up mt-3">
+                <div class="eyebrow">Our Team</div>
+                <h2>Meet Our Dental Professionals</h2>
+                <p class="text-muted">Left to right: our dedicated specialists at OEXA Dental Clinic</p>
             </div>
-            <div class="row">
-                <!-- Staff Member 1 - General Dentistry -->
-                <div class="col-md-6 col-lg-6 mb-4">
-                    <div class="card staff-card h-100">
-                        <div class="card-body text-center d-flex flex-column">
-                            <div class="staff-image">
-                                <img src="../assets/images/alkeoOexa.JPG" alt="Dr. Alkeo Gaci" class="staff-photo">
-                            </div>
-                            <h4 class="card-title">Dr. Alkeo Gaci</h4>
-                            <p class="text-muted mb-3">General Dentistry Specialist</p>
-                            <p class="card-text flex-grow-1">
-                                Dr. Alkeo Gaci specializes in general dentistry, providing comprehensive dental care to patients of all ages.
-                                With expertise in dental check-ups, tooth extractions, fillings, and restorations, Dr. Gaci is committed to
-                                maintaining your oral health. He provides personalized oral hygiene instructions and preventive care to help
-                                you achieve and maintain a healthy smile. His gentle approach and attention to detail ensure a comfortable
-                                experience for every patient.
-                            </p>
-                            <p class="card-text mb-0">
-                                <small class="text-muted">DDS, General Dentistry</small>
-                            </p>
+
+            <img src="../../assets/images/teamLobby.png" alt="OEXA Dental Clinic Team" class="staff-team-banner fade-in">
+
+            <div class="staff-faces-row fade-in-up">
+                <div class="staff-face-item"><div class="staff-face-circle staff-face-1"></div><strong>Ornela<br>Braho</strong></div>
+                <div class="staff-face-item"><div class="staff-face-circle staff-face-2"></div><strong>Elvis<br>Sula</strong></div>
+                <div class="staff-face-item"><div class="staff-face-circle staff-face-3"></div><strong>Alesia<br>Toci</strong></div>
+                <div class="staff-face-item"><div class="staff-face-circle staff-face-4"></div><strong>Xhule<br>Metaj</strong></div>
+                <div class="staff-face-item"><div class="staff-face-circle staff-face-5"></div><strong>Alkeo<br>Gaci</strong></div>
+                <div class="staff-face-item"><div class="staff-face-circle staff-face-6"></div><strong>Xhesika<br>Azizaj</strong></div>
+                <div class="staff-face-item"><div class="staff-face-circle staff-face-7"></div><strong>Ornela<br>Geci</strong></div>
+            </div>
+
+            <div class="row stagger-children">
+                <div class="col-md-6 col-lg-4 mb-4">
+                    <div class="card staff-card h-100 text-center">
+                        <div class="card-body">
+                            <div class="staff-photo-crop staff-face-1 mx-auto"></div>
+                            <h4 class="card-title">Dr. Ornela Braho</h4>
+                            <p class="text-muted">General Dentistry</p>
+                            <p class="card-text small">Comprehensive dental care with a gentle, patient-focused approach.</p>
                         </div>
                     </div>
                 </div>
-
-                <!-- Staff Member 2 - Orthodontics -->
-                <div class="col-md-6 col-lg-6 mb-4">
-                    <div class="card staff-card h-100">
-                        <div class="card-body text-center d-flex flex-column">
-                            <div class="staff-image">
-                                <img src="../assets/images/ornelaOexa.jpg" alt="Dr. Ornela Geci" class="staff-photo">
-                            </div>
-                            <h4 class="card-title">Dr. Ornela Geci</h4>
-                            <p class="text-muted mb-3">Orthodontist</p>
-                            <p class="card-text flex-grow-1">
-                                Dr. Ornela Geci is a skilled orthodontist specializing in teeth alignment and bite correction. She offers a
-                                wide range of orthodontic treatments including metal braces, ceramic braces, invisible braces, and clear
-                                aligners such as Invisalign. Dr. Geci also provides retainers and comprehensive jaw alignment treatments.
-                                Her expertise helps patients achieve beautifully aligned smiles and improved oral function through
-                                personalized treatment plans.
-                            </p>
-                            <p class="card-text mb-0">
-                                <small class="text-muted">DDS, MS, Orthodontics</small>
-                            </p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Staff Member 3 - Cosmetic Dentistry -->
-                <div class="col-md-6 col-lg-6 mb-4">
-                    <div class="card staff-card h-100">
-                        <div class="card-body text-center d-flex flex-column">
-                            <div class="staff-image">
-                                <img src="../assets/images/xhuleOexa.jpg" alt="Dr. Xhule Metaj" class="staff-photo">
-                            </div>
-                            <h4 class="card-title">Dr. Xhule Metaj</h4>
-                            <p class="text-muted mb-3">Cosmetic Dentist</p>
-                            <p class="card-text flex-grow-1">
-                                Dr. Xhule Metaj is an expert in cosmetic dentistry, dedicated to transforming smiles and enhancing dental
-                                aesthetics. Specializing in teeth whitening, veneers, smile makeovers, and bonding and shaping procedures,
-                                Dr. Metaj combines artistic vision with advanced dental techniques. Whether you're looking for a subtle
-                                enhancement or a complete smile transformation, Dr. Metaj creates beautiful, natural-looking results that
-                                boost confidence and improve your overall appearance.
-                            </p>
-                            <p class="card-text mb-0">
-                                <small class="text-muted">DDS, Cosmetic Dentistry</small>
-                            </p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Staff Member 4 - Pediatric Dentistry -->
-                <div class="col-md-6 col-lg-6 mb-4">
-                    <div class="card staff-card h-100">
-                        <div class="card-body text-center d-flex flex-column">
-                            <div class="staff-image">
-                                <img src="../assets/images/alesjaOexa.jpg" alt="Dr. Alesja Toci" class="staff-photo">
-                            </div>
-                            <h4 class="card-title">Dr. Alesja Toci</h4>
-                            <p class="text-muted mb-3">Pediatric Dentist</p>
-                            <p class="card-text flex-grow-1">
-                                Dr. Alesja Toci specializes in pediatric dentistry, providing specialized care for children from infancy
-                                through adolescence. She offers preventive dental exams, fluoride treatments, sealants, and early
-                                orthodontic assessments. Dr. Toci creates a fun, welcoming environment that helps children feel
-                                comfortable during their dental visits. Her gentle approach and expertise in child psychology ensure
-                                positive dental experiences that establish healthy oral hygiene habits for life.
-                            </p>
-                            <p class="card-text mb-0">
-                                <small class="text-muted">DDS, MS, Pediatric Dentistry</small>
-                            </p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Staff Member 5 - Oral Surgery -->
-                <div class="col-md-6 col-lg-6 mb-4 mx-auto">
-                    <div class="card staff-card h-100">
-                        <div class="card-body text-center d-flex flex-column">
-                            <div class="staff-image">
-                                <img src="../assets/images/elvisOexa.jpg" alt="Dr. Elvis Sula" class="staff-photo">
-                            </div>
+                <div class="col-md-6 col-lg-4 mb-4">
+                    <div class="card staff-card h-100 text-center">
+                        <div class="card-body">
+                            <img src="../../assets/images/elvisOexa.jpg" alt="Dr. Elvis Sula" class="staff-photo">
                             <h4 class="card-title">Dr. Elvis Sula</h4>
-                            <p class="text-muted mb-3">Oral Surgeon</p>
-                            <p class="card-text flex-grow-1">
-                                Dr. Elvis Sula is an experienced oral and maxillofacial surgeon specializing in advanced surgical procedures.
-                                He performs wisdom teeth extractions, dental implant placement, bone grafting, and minor facial trauma
-                                treatment. With precision and expertise, Dr. Sula ensures patient comfort throughout complex surgical
-                                procedures. His advanced training and commitment to staying current with the latest surgical techniques
-                                make him a trusted specialist for patients requiring oral surgery.
-                            </p>
-                            <p class="card-text mb-0">
-                                <small class="text-muted">DDS, MD, Oral Surgery</small>
-                            </p>
+                            <p class="text-muted">Oral Surgeon</p>
+                            <p class="card-text small">Wisdom teeth extraction, implants and oral surgery procedures.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-4 mb-4">
+                    <div class="card staff-card h-100 text-center">
+                        <div class="card-body">
+                            <img src="../../assets/images/alesjaOexa.jpg" alt="Dr. Alesia Toci" class="staff-photo">
+                            <h4 class="card-title">Dr. Alesia Toci</h4>
+                            <p class="text-muted">Pediatric Dentist</p>
+                            <p class="card-text small">Specialized care for children in a welcoming environment.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-4 mb-4">
+                    <div class="card staff-card h-100 text-center">
+                        <div class="card-body">
+                            <img src="../../assets/images/xhuleOexa.jpg" alt="Dr. Xhule Metaj" class="staff-photo">
+                            <h4 class="card-title">Dr. Xhule Metaj</h4>
+                            <p class="text-muted">Cosmetic Dentist</p>
+                            <p class="card-text small">Teeth whitening, veneers and aesthetic smile design.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-4 mb-4">
+                    <div class="card staff-card h-100 text-center">
+                        <div class="card-body">
+                            <img src="../../assets/images/alkeoOexa.JPG" alt="Dr. Alkeo Gaci" class="staff-photo">
+                            <h4 class="card-title">Dr. Alkeo Gaci</h4>
+                            <p class="text-muted">General Dentistry</p>
+                            <p class="card-text small">Routine exams, fillings and personalized oral health plans.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-4 mb-4">
+                    <div class="card staff-card h-100 text-center">
+                        <div class="card-body">
+                            <div class="staff-photo-crop staff-face-6 mx-auto"></div>
+                            <h4 class="card-title">Dr. Xhesika Azizaj</h4>
+                            <p class="text-muted">Cosmetic Dentistry</p>
+                            <p class="card-text small">Smile enhancements and cosmetic dental treatments.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-4 mb-4">
+                    <div class="card staff-card h-100 text-center">
+                        <div class="card-body">
+                            <img src="../../assets/images/ornelaOexa.jpg" alt="Dr. Ornela Geci" class="staff-photo">
+                            <h4 class="card-title">Dr. Ornela Geci</h4>
+                            <p class="text-muted">Orthodontist</p>
+                            <p class="card-text small">Braces, clear aligners and orthodontic treatment plans.</p>
                         </div>
                     </div>
                 </div>
@@ -186,13 +105,12 @@
         </div>
     </section>
 
-   <!-- Footer -->
-<footer class="bg-dark text-white py-4" id="footer"></footer>
+    <footer class="text-white py-4" id="footer"></footer>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<script src="../../js/shared/api.js"></script>
-<script src="../../js/user/navbar.js"></script>
-<script src="../../js/user/footer.js"></script>
-<script src="../../js/user/main.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="../../js/shared/api.js"></script>
+    <script src="../../js/user/navbar.js"></script>
+    <script src="../../js/user/footer.js"></script>
+    <script src="../../js/user/animations.js"></script>
 </body>
 </html>

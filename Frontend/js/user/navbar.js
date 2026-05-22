@@ -10,36 +10,52 @@ document.addEventListener('DOMContentLoaded', function() {
         return currentPage === file ? 'active' : '';
     }
 
-    let authLinks = '';
+    let menuExtras = '';
     if (isPatient) {
-        authLinks = `
-            <li class="nav-item"><a class="nav-link ${active('my-appointments.html')}" href="my-appointments.html">My Appointments</a></li>
-            <li class="nav-item"><a class="nav-link" href="#" id="logoutPatient">Logout</a></li>
+        menuExtras = `
+            <li><a class="dropdown-item ${active('my-appointments.html')}" href="my-appointments.html">My Appointments</a></li>
+            <li><a class="dropdown-item" href="#" id="logoutPatient">Logout</a></li>
         `;
     } else {
-        authLinks = `
-            <li class="nav-item"><a class="nav-link ${active('login.html')}" href="login.html">Login</a></li>
-            <li class="nav-item"><a class="nav-link ${active('register.html')}" href="register.html">Register</a></li>
+        menuExtras = `
+            <li><a class="dropdown-item ${active('login.html')}" href="login.html">Login</a></li>
+            <li><a class="dropdown-item ${active('register.html')}" href="register.html">Register</a></li>
         `;
     }
+    menuExtras += '<li><hr class="dropdown-divider"></li><li><a class="dropdown-item" href="../portal/login.html">Staff Login</a></li>';
 
+    navbar.className = 'navbar navbar-expand-lg fixed-top oexa-navbar';
     navbar.innerHTML = `
-        <div class="container">
-            <a class="navbar-brand" href="index.html">OEXA Dental Clinic</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
-                    <li class="nav-item"><a class="nav-link ${active('index.html')}" href="index.html">Home</a></li>
-                    <li class="nav-item"><a class="nav-link ${active('about.html')}" href="about.html">About Us</a></li>
-                    <li class="nav-item"><a class="nav-link ${active('services.html')}" href="services.html">Services</a></li>
-                    <li class="nav-item"><a class="nav-link ${active('staff.html')}" href="staff.html">Our Staff</a></li>
-                    <li class="nav-item"><a class="nav-link ${active('book-appointment.html')}" href="book-appointment.html">Book Appointment</a></li>
-                    <li class="nav-item"><a class="nav-link ${active('offers.html')}" href="offers.html">Offers</a></li>
-                    <li class="nav-item"><a class="nav-link ${active('contact.html')}" href="contact.html">Contact Us</a></li>
-                    ${authLinks}
-                    <li class="nav-item"><a class="nav-link" href="../portal/login.html">Staff Login</a></li>
+        <div class="container-fluid oexa-nav-inner">
+            <a class="navbar-brand oexa-brand" href="index.html">
+                <img src="../../assets/images/oexaLogo.JPG" alt="OEXA" class="oexa-logo-img">
+                <span class="oexa-brand-text">OEXA <small>DENTAL CLINIC</small></span>
+            </a>
+
+            <ul class="navbar-nav oexa-nav-pages ms-auto d-none d-lg-flex">
+                <li class="nav-item"><a class="nav-link ${active('index.html')}" href="index.html">Home</a></li>
+                <li class="nav-item"><a class="nav-link ${active('about.html')}" href="about.html">About Us</a></li>
+                <li class="nav-item"><a class="nav-link ${active('services.html')}" href="services.html">Services</a></li>
+                <li class="nav-item"><a class="nav-link ${active('staff.html')}" href="staff.html">Our Staff</a></li>
+                <li class="nav-item"><a class="nav-link ${active('book-appointment.html')}" href="book-appointment.html">Book Appointment</a></li>
+                <li class="nav-item"><a class="nav-link ${active('offers.html')}" href="offers.html">Offers</a></li>
+                <li class="nav-item"><a class="nav-link ${active('contact.html')}" href="contact.html">Contact Us</a></li>
+            </ul>
+
+            <div class="dropdown oexa-burger-wrap">
+                <button class="btn oexa-burger-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Menu">
+                    <span></span><span></span><span></span>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end oexa-nav-dropdown">
+                    <li><a class="dropdown-item ${active('index.html')}" href="index.html">Home</a></li>
+                    <li><a class="dropdown-item ${active('about.html')}" href="about.html">About Us</a></li>
+                    <li><a class="dropdown-item ${active('services.html')}" href="services.html">Services</a></li>
+                    <li><a class="dropdown-item ${active('staff.html')}" href="staff.html">Our Staff</a></li>
+                    <li><a class="dropdown-item ${active('book-appointment.html')}" href="book-appointment.html">Book Appointment</a></li>
+                    <li><a class="dropdown-item ${active('offers.html')}" href="offers.html">Offers</a></li>
+                    <li><a class="dropdown-item ${active('contact.html')}" href="contact.html">Contact Us</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    ${menuExtras}
                 </ul>
             </div>
         </div>

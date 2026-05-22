@@ -1,9 +1,17 @@
 :root {
-    --turquoise: #40E0D0;
-    --light-blue: #87CEEB;
-    --dark-blue: #1E3A8A;
-    --light-orange: #FFB347;
-    --light-turquoise-bg: #E0F7FA;
+    --white: #ffffff;
+    --blue-50: #eff6ff;
+    --blue-100: #dbeafe;
+    --blue-400: #60a5fa;
+    --blue-500: #3b82f6;
+    --blue-600: #2563eb;
+    --blue-700: #1d4ed8;
+    --blue-800: #1e3a8a;
+    --blue-900: #172554;
+    --text-dark: #1e293b;
+    --text-muted: #64748b;
+    --shadow: 0 10px 40px rgba(30, 58, 138, 0.12);
+    --nav-height: 76px;
 }
 
 * {
@@ -12,130 +20,409 @@
     box-sizing: border-box;
 }
 
+html {
+    scroll-behavior: smooth;
+}
+
 body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
     line-height: 1.6;
-    color: #333;
-    background-color: var(--light-turquoise-bg);
+    color: var(--text-dark);
+    background-color: var(--blue-50);
+    padding-top: var(--nav-height);
 }
 
-.home-background-image {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100vh;
-    background-image: url('../assets/images/staffPictureOexa.jpg');
-    background-size: cover;
-    background-position: center;
-    z-index: 0;
+.oexa-navbar {
+    background: linear-gradient(90deg, #ffffff 0%, #ffffff 12%, #93c5fd 45%, #3b82f6 70%, #1e3a8a 100%) !important;
+    box-shadow: 0 4px 24px rgba(30, 58, 138, 0.15);
+    z-index: 1050 !important;
+    padding: 0.5rem 0;
+    min-height: var(--nav-height);
 }
 
-.background-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(135deg, rgba(30, 58, 138, 0.4) 0%, rgba(64, 224, 208, 0.3) 100%);
+.oexa-nav-inner {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
 }
 
-.navbar {
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    padding: 1rem 0;
-    background-color: #fff !important;
-    z-index: 1000;
+.oexa-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    text-decoration: none;
 }
 
-.navbar-brand {
-    font-weight: bold;
-    font-size: 1.5rem;
-    color: var(--dark-blue) !important;
+.oexa-logo-img {
+    height: 48px;
+    width: auto;
+    border-radius: 8px;
 }
 
-.navbar-nav .nav-link {
+.oexa-brand-text {
+    font-weight: 800;
+    font-size: 1.15rem;
+    color: var(--blue-800);
+    line-height: 1.1;
+}
+
+.oexa-brand-text small {
+    display: block;
+    font-size: 0.55rem;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    color: var(--blue-600);
+}
+
+.oexa-nav-pages .nav-link {
+    color: var(--white) !important;
+    font-weight: 600;
+    font-size: 0.95rem;
+    padding: 0.5rem 0.85rem !important;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.oexa-nav-pages .nav-link:hover,
+.oexa-nav-pages .nav-link.active {
+    opacity: 1;
+    transform: translateY(-1px);
+    text-shadow: 0 0 12px rgba(255,255,255,0.5);
+}
+
+.oexa-nav-pages .nav-link.active {
+    border-bottom: 2px solid rgba(255,255,255,0.9);
+}
+
+.oexa-burger-btn {
+    width: 44px;
+    height: 44px;
+    border: none;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.95);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 5px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.oexa-burger-btn span {
+    display: block;
+    width: 22px;
+    height: 2px;
+    background: var(--blue-800);
+    border-radius: 2px;
+}
+
+.oexa-nav-dropdown {
+    border: none;
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    padding: 0.5rem;
+    min-width: 220px;
+}
+
+.oexa-nav-dropdown .dropdown-item {
+    border-radius: 8px;
     font-weight: 500;
-    margin: 0 0.5rem;
-    transition: color 0.3s ease;
-    color: var(--dark-blue) !important;
+    padding: 0.5rem 1rem;
 }
 
-.navbar-nav .nav-link:hover,
-.navbar-nav .nav-link.active {
-    color: var(--turquoise) !important;
+.oexa-nav-dropdown .dropdown-item:hover {
+    background: var(--blue-50);
+    color: var(--blue-800);
 }
 
-.hero-section {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100vh;
+.fade-in-up {
+    opacity: 0;
+    transform: translateY(28px);
+    transition: opacity 0.7s ease, transform 0.7s ease;
+}
+
+.fade-in {
+    opacity: 0;
+    transition: opacity 0.8s ease;
+}
+
+.fade-in-delay {
+    opacity: 0;
+    transition: opacity 0.9s ease 0.2s;
+}
+
+.fade-in-up.is-visible,
+.fade-in.is-visible,
+.fade-in-delay.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.pulse-soft {
+    animation: pulseSoft 3s ease-in-out infinite;
+}
+
+@keyframes pulseSoft {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.02); }
+}
+
+.float-gentle {
+    animation: floatGentle 4s ease-in-out infinite;
+}
+
+@keyframes floatGentle {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+}
+
+.landing-hero {
+    min-height: calc(100vh - var(--nav-height));
+    display: flex;
+    align-items: center;
+    background: linear-gradient(135deg, var(--blue-50) 0%, var(--white) 50%, var(--blue-100) 100%);
+    padding: 3rem 0;
     overflow: hidden;
-    z-index: 0;
-    background-image: url('../assets/images/oexaLogo.JPG');
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
 }
 
-.welcome-section {
-    background-color: var(--light-turquoise-bg);
-    position: relative;
-    z-index: 1;
-    margin-top: 100vh;
-    padding-top: 3rem;
-    padding-bottom: 3rem;
+.landing-badge {
+    display: inline-block;
+    background: var(--blue-100);
+    color: var(--blue-700);
+    padding: 0.35rem 1rem;
+    border-radius: 50px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
 }
 
-.carousel-section {
-    background-color: var(--light-turquoise-bg);
-    position: relative;
-    z-index: 1;
+.landing-hero h1 {
+    font-size: clamp(2.2rem, 5vw, 3.5rem);
+    font-weight: 800;
+    color: var(--blue-800);
+    line-height: 1.15;
+    margin-bottom: 1.25rem;
+}
+
+.landing-hero .lead {
+    color: var(--text-muted);
+    font-size: 1.15rem;
+    max-width: 520px;
+}
+
+.landing-hero-img {
+    max-width: 100%;
+    height: auto;
+    filter: drop-shadow(0 20px 40px rgba(30, 58, 138, 0.2));
+}
+
+.trust-card {
+    background: var(--white);
+    border-radius: 16px;
+    padding: 1rem 1.25rem;
+    box-shadow: var(--shadow);
+    display: inline-flex;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 1.5rem;
+}
+
+.feature-pill-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.25rem;
+    margin: 3rem 0;
+}
+
+.feature-pill {
+    background: var(--white);
+    border-radius: 16px;
+    padding: 1.5rem;
+    text-align: center;
+    box-shadow: var(--shadow);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.feature-pill:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 16px 48px rgba(30, 58, 138, 0.18);
+}
+
+.feature-pill .icon {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+}
+
+.feature-pill h5 {
+    color: var(--blue-800);
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+}
+
+.section-title {
+    text-align: center;
+    margin-bottom: 2.5rem;
+}
+
+.section-title .eyebrow {
+    color: var(--blue-500);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 0.85rem;
+}
+
+.section-title h2 {
+    color: var(--blue-800);
+    font-weight: 800;
+    font-size: 2.25rem;
+}
+
+.page-section {
+    padding: 4rem 0;
+    background: var(--blue-50);
+}
+
+.page-section.alt {
+    background: var(--white);
+}
+
+.card-modern {
+    border: none;
+    border-radius: 16px;
+    box-shadow: var(--shadow);
+    background: var(--white);
+    transition: transform 0.35s ease, box-shadow 0.35s ease;
+    overflow: hidden;
+}
+
+.card-modern:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 20px 50px rgba(30, 58, 138, 0.15);
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--blue-500) 0%, var(--blue-700) 100%);
+    border: none;
+    color: var(--white);
+    padding: 0.75rem 1.75rem;
+    font-weight: 600;
+    border-radius: 10px;
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, var(--blue-600) 0%, var(--blue-800) 100%);
+    color: var(--white);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(37, 99, 235, 0.4);
+}
+
+.btn-outline-primary {
+    border: 2px solid var(--blue-600);
+    color: var(--blue-700);
+    font-weight: 600;
+    border-radius: 10px;
+    padding: 0.7rem 1.5rem;
+}
+
+.btn-outline-primary:hover {
+    background: var(--blue-600);
+    color: var(--white);
 }
 
 .carousel-section .carousel-inner {
-    border-radius: 15px;
+    border-radius: 20px;
     overflow: hidden;
-    box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+    box-shadow: var(--shadow);
 }
 
 .carousel-section .carousel-item img {
-    height: 500px;
+    height: 480px;
     object-fit: cover;
 }
 
-.carousel-section .carousel-control-prev,
-.carousel-section .carousel-control-next {
-    width: 5%;
+.staff-team-banner {
+    width: 100%;
+    border-radius: 20px;
+    box-shadow: var(--shadow);
+    margin-bottom: 2rem;
 }
 
-.carousel-section .carousel-indicators button {
-    background-color: var(--dark-blue);
+.staff-faces-row {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 1.25rem;
+    margin-bottom: 3rem;
+    padding: 1.5rem;
+    background: var(--white);
+    border-radius: 20px;
+    box-shadow: var(--shadow);
 }
 
-.services-section {
-    background-color: var(--light-turquoise-bg);
-    position: relative;
-    z-index: 1;
+.staff-face-item {
+    text-align: center;
+    width: 100px;
 }
 
-.services-section .card {
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
+.staff-face-circle {
+    width: 88px;
+    height: 88px;
+    border-radius: 50%;
+    border: 3px solid var(--blue-500);
+    background-image: url('../assets/images/teamLobby.png');
+    background-size: 700% auto;
+    background-repeat: no-repeat;
+    margin: 0 auto 0.5rem;
+    box-shadow: 0 4px 16px rgba(30, 58, 138, 0.2);
+}
+
+.staff-face-1 { background-position: 2% 35%; }
+.staff-face-2 { background-position: 16% 35%; }
+.staff-face-3 { background-position: 30% 35%; }
+.staff-face-4 { background-position: 44% 30%; }
+.staff-face-5 { background-position: 58% 35%; }
+.staff-face-6 { background-position: 72% 35%; }
+.staff-face-7 { background-position: 86% 35%; }
+
+.staff-face-item strong {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--blue-800);
+    line-height: 1.2;
+}
+
+.staff-card {
     border: none;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-    background-color: #fff;
+    border-radius: 16px;
+    box-shadow: var(--shadow);
+    padding: 1.5rem;
+    background: var(--white);
+    height: 100%;
+    transition: transform 0.3s ease;
 }
 
-.services-section .card:hover {
+.staff-card:hover {
     transform: translateY(-5px);
-    box-shadow: 0 5px 20px rgba(30, 58, 138, 0.2);
-    border-top: 3px solid var(--turquoise);
 }
 
-.services-section .card-title {
-    color: var(--dark-blue);
-    font-weight: 600;
+.staff-photo {
+    width: 140px;
+    height: 140px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 4px solid var(--blue-400);
+    margin-bottom: 1rem;
+}
+
+.staff-photo-crop {
+    width: 140px;
+    height: 140px;
+    border-radius: 50%;
+    border: 4px solid var(--blue-400);
+    margin: 0 auto 1rem;
+    background-image: url('../assets/images/teamLobby.png');
+    background-size: 700% auto;
+    background-repeat: no-repeat;
 }
 
 .service-card-general,
@@ -147,6 +434,7 @@ body {
     overflow: hidden;
     background-size: cover;
     background-position: center;
+    min-height: 280px;
 }
 
 .service-card-general::before,
@@ -156,11 +444,8 @@ body {
 .service-card-surgery::before {
     content: '';
     position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
+    inset: 0;
+    background: linear-gradient(to top, rgba(30, 58, 138, 0.85), rgba(30, 58, 138, 0.35));
     z-index: 1;
 }
 
@@ -171,88 +456,30 @@ body {
 .service-card-surgery .card-body {
     position: relative;
     z-index: 2;
+    color: var(--white);
 }
 
-.service-card-general:hover::before,
-.service-card-orthodontics:hover::before,
-.service-card-cosmetic:hover::before,
-.service-card-pediatric:hover::before,
-.service-card-surgery:hover::before {
-    background: rgba(0, 0, 0, 0.4);
-}
-
-.service-card-general .card-title,
-.service-card-orthodontics .card-title,
-.service-card-cosmetic .card-title,
-.service-card-pediatric .card-title,
-.service-card-surgery .card-title,
-.service-card-general .card-text,
-.service-card-orthodontics .card-text,
-.service-card-cosmetic .card-text,
-.service-card-pediatric .card-text,
-.service-card-surgery .card-text,
-.service-card-general .text-muted,
-.service-card-orthodontics .text-muted,
-.service-card-cosmetic .text-muted,
-.service-card-pediatric .text-muted,
-.service-card-surgery .text-muted,
-.service-card-general .list-unstyled,
-.service-card-orthodontics .list-unstyled,
-.service-card-cosmetic .list-unstyled,
-.service-card-pediatric .list-unstyled,
-.service-card-surgery .list-unstyled {
-    color: rgba(255, 255, 255, 0.95);
-}
-
-.service-card-general .card-title,
-.service-card-orthodontics .card-title,
-.service-card-cosmetic .card-title,
-.service-card-pediatric .card-title,
-.service-card-surgery .card-title {
-    font-weight: 600;
-}
-
-.service-card-general {
-    background-image: url('../assets/images/photo113.jpg');
-}
-
-.service-card-orthodontics {
-    background-image: url('../assets/images/photo112.jpg');
-}
-
-.service-card-cosmetic {
-    background-image: url('../assets/images/photo111.jpg');
-}
-
-.service-card-pediatric {
-    background-image: url('../assets/images/photo114.jpg');
-}
-
-.service-card-surgery {
-    background-image: url('../assets/images/photo115.jpg');
-}
+.service-card-general { background-image: url('../assets/images/photo113.jpg'); }
+.service-card-orthodontics { background-image: url('../assets/images/photo112.jpg'); }
+.service-card-cosmetic { background-image: url('../assets/images/photo111.jpg'); }
+.service-card-pediatric { background-image: url('../assets/images/photo114.jpg'); }
+.service-card-surgery { background-image: url('../assets/images/photo115.jpg'); }
 
 .about-hero-section {
-    position: relative;
-    min-height: 100vh;
-    background: url('../assets/images/staffPictureOexa.jpg');
-    background-size: cover;
-    background-position: center;
-    background-attachment: fixed;
+    min-height: 60vh;
+    background: url('../assets/images/teamLobby.png') center/cover no-repeat;
     display: flex;
     align-items: center;
-    justify-content: center;
-    padding-top: 80px;
+    position: relative;
+    border-radius: 0 0 24px 24px;
+    margin-bottom: 2rem;
 }
 
 .about-hero-overlay {
     position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(135deg, rgba(30, 58, 138, 0.7) 0%, rgba(64, 224, 208, 0.6) 100%);
-    z-index: 1;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(30, 58, 138, 0.75), rgba(59, 130, 246, 0.5));
+    border-radius: 0 0 24px 24px;
 }
 
 .about-hero-section .container {
@@ -261,261 +488,51 @@ body {
 }
 
 .about-title {
-    color: #fff;
-    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-}
-
-.about-content-section {
-    background-color: #fff;
-    padding-top: 4rem;
+    color: var(--white);
+    text-shadow: 0 2px 12px rgba(0,0,0,0.3);
 }
 
 .contact-section,
 .staff-section,
 .appointment-section {
-    padding-top: 80px;
-    background-color: var(--light-turquoise-bg);
+    padding-top: 2rem;
+    padding-bottom: 4rem;
 }
 
 .contact-section .card,
-.staff-card,
 .appointment-section .card {
     border: none;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-    background-color: #fff;
-}
-
-.staff-card {
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-
-.staff-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 5px 20px rgba(30, 58, 138, 0.2);
-    border-top: 3px solid var(--light-orange);
-}
-
-.staff-card .card-title {
-    color: var(--dark-blue);
-    font-weight: 600;
-}
-
-.staff-card .text-muted {
-    color: var(--turquoise) !important;
-    font-weight: 500;
-}
-
-.contact-section .form-control,
-.appointment-section .form-control {
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    padding: 0.75rem;
-}
-
-.contact-section .form-control:focus,
-.appointment-section .form-control:focus {
-    border-color: var(--turquoise);
-    box-shadow: 0 0 0 0.2rem rgba(64, 224, 208, 0.25);
-}
-
-.contact-item {
-    display: flex;
-    align-items: flex-start;
-    gap: 1rem;
-}
-
-.contact-icon {
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, var(--turquoise) 0%, var(--light-blue) 100%);
-    color: var(--dark-blue);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.5rem;
-    flex-shrink: 0;
-}
-
-.contact-details h5 {
-    color: var(--dark-blue);
-    margin-bottom: 0.5rem;
-}
-
-.contact-details a {
-    color: var(--turquoise);
-    text-decoration: none;
-    transition: color 0.3s ease;
-}
-
-.contact-details a:hover {
-    color: var(--dark-blue);
-}
-
-.social-media-links {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-}
-
-.social-link {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    padding: 1rem;
-    border-radius: 8px;
-    text-decoration: none;
-    color: #333;
-    transition: all 0.3s ease;
-    border: 2px solid transparent;
-}
-
-.social-link i {
-    font-size: 1.5rem;
-    width: 30px;
-    text-align: center;
-}
-
-.social-link.facebook {
-    background-color: #E3F2FD;
-    color: #1877F2;
-}
-
-.social-link.facebook:hover {
-    background-color: #1877F2;
-    color: #fff;
-}
-
-.social-link.instagram {
-    background-color: #FCE4EC;
-    color: #E4405F;
-}
-
-.social-link.instagram:hover {
-    background-color: #E4405F;
-    color: #fff;
-}
-
-.social-link.twitter {
-    background-color: #E1F5FE;
-    color: #1DA1F2;
-}
-
-.social-link.twitter:hover {
-    background-color: #1DA1F2;
-    color: #fff;
-}
-
-.social-link.linkedin {
-    background-color: #E3F2FD;
-    color: #0077B5;
-}
-
-.social-link.linkedin:hover {
-    background-color: #0077B5;
-    color: #fff;
-}
-
-.social-link.youtube {
-    background-color: #FFEBEE;
-    color: #FF0000;
-}
-
-.social-link.youtube:hover {
-    background-color: #FF0000;
-    color: #fff;
-}
-
-.map-placeholder {
-    background-color: var(--light-turquoise-bg);
-    padding: 2rem;
-    border-radius: 8px;
-    text-align: center;
+    border-radius: 16px;
+    box-shadow: var(--shadow);
 }
 
 footer {
-    margin-top: auto;
-    background-color: var(--dark-blue) !important;
+    background: linear-gradient(135deg, var(--blue-900) 0%, var(--blue-800) 100%) !important;
     position: relative;
     z-index: 10;
 }
 
-footer .container {
-    text-align: center;
-}
-
 footer a {
-    color: var(--light-blue);
+    color: var(--blue-100);
     text-decoration: none;
-    margin: 0 10px;
-    transition: color 0.3s ease;
 }
 
 footer a:hover {
-    color: var(--turquoise);
+    color: var(--white);
 }
 
-.btn-primary {
-    background: linear-gradient(135deg, var(--turquoise) 0%, var(--light-blue) 100%);
-    border: none;
-    color: var(--dark-blue);
-    padding: 0.75rem 2rem;
-    font-weight: 600;
-    transition: all 0.3s ease;
-}
-
-.btn-primary:hover {
-    background: linear-gradient(135deg, var(--light-blue) 0%, var(--turquoise) 100%);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(64, 224, 208, 0.4);
-    color: var(--dark-blue);
-}
-
-.hero-buttons {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-}
-
-.card {
-    border-radius: 10px;
-    overflow: hidden;
-}
-
-.card-body {
-    padding: 2rem;
-}
-
-section {
-    padding: 4rem 0;
-    position: relative;
-    z-index: 1;
-}
-
-img {
-    max-width: 100%;
-    height: auto;
+@media (max-width: 991px) {
+    .oexa-nav-pages {
+        display: none !important;
+    }
 }
 
 @media (max-width: 768px) {
-    .hero-section {
+    .landing-hero {
         text-align: center;
     }
-    
-    .hero-section h1 {
-        font-size: 2rem;
-    }
-    
-    .display-4 {
-        font-size: 2rem;
-    }
-    
-    .hero-buttons {
-        justify-content: center;
-    }
-    
-    .hero-buttons .btn {
-        width: 100%;
-        margin: 0.25rem 0;
+    .landing-hero .lead {
+        margin-left: auto;
+        margin-right: auto;
     }
 }
