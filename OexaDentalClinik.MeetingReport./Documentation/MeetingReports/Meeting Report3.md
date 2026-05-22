@@ -5,12 +5,12 @@ March 22, 2025
 
 ## Participants
 - Ornela Geci
-- Alesia
-- Aleko
-- Xhule
-- Elvis
+- Alesia Toci
+- Alkeo Gaci 
+- Xhule Metaj 
+- Elvis Sula 
 - Ornela Braho
-- Xhesi
+- Xhesi Azizaj 
 
 ## Objectives
 - Review backend progress
@@ -29,12 +29,12 @@ March 22, 2025
 
 ## Tasks Assigned
 - Ornela Geci → Appointment APIs
-- Aleko → Database optimization
-- Alesia → Dashboard frontend
-- Xhule → Sequence diagrams
-- Elvis → Payment service implementation
+- Alkeo Gaci → Database optimization
+- Alesia Toci → Dashboard frontend
+- Xhule Metaj→ Sequence diagrams
+- Elvis Sula → Payment service implementation
 - Ornela Braho → Promotion system
-- Xhesi → Functional testing
+- Xhesi Azizaj → Functional testing
 
 ## Next Meeting
 March 29, 2025
