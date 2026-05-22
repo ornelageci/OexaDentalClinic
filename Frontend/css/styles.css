@@ -366,25 +366,49 @@ body {
     width: 100px;
 }
 
+.staff-portraits-banner {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+.staff-portraits-img {
+    max-width: 100%;
+    width: min(920px, 100%);
+    border-radius: 20px;
+    box-shadow: var(--shadow);
+}
+
+.staff-face-circle,
+.staff-photo-crop {
+    background-image: url('../assets/images/staffPortraits.png');
+    background-size: 400% 200%;
+    background-repeat: no-repeat;
+}
+
 .staff-face-circle {
     width: 88px;
     height: 88px;
     border-radius: 50%;
     border: 3px solid var(--blue-500);
-    background-image: url('../assets/images/teamLobby.png');
-    background-size: 700% auto;
-    background-repeat: no-repeat;
     margin: 0 auto 0.5rem;
     box-shadow: 0 4px 16px rgba(30, 58, 138, 0.2);
 }
 
-.staff-face-1 { background-position: 2% 35%; }
-.staff-face-2 { background-position: 16% 35%; }
-.staff-face-3 { background-position: 30% 35%; }
-.staff-face-4 { background-position: 44% 30%; }
-.staff-face-5 { background-position: 58% 35%; }
-.staff-face-6 { background-position: 72% 35%; }
-.staff-face-7 { background-position: 86% 35%; }
+.staff-photo-crop {
+    width: 140px;
+    height: 140px;
+    border-radius: 50%;
+    border: 4px solid var(--blue-400);
+    margin: 0 auto 1rem;
+}
+
+/* Top row L→R: Ornela Braho, Elvis, Alesia, Xhule | Bottom: Alkeo, Xhesika, Ornela Geci */
+.staff-p1 { background-position: 8% 12%; }
+.staff-p2 { background-position: 38% 12%; }
+.staff-p3 { background-position: 68% 12%; }
+.staff-p4 { background-position: 98% 12%; }
+.staff-p5 { background-position: 18% 88%; }
+.staff-p6 { background-position: 50% 88%; }
+.staff-p7 { background-position: 82% 88%; }
 
 .staff-face-item strong {
     display: block;
@@ -416,16 +440,6 @@ body {
     margin-bottom: 1rem;
 }
 
-.staff-photo-crop {
-    width: 140px;
-    height: 140px;
-    border-radius: 50%;
-    border: 4px solid var(--blue-400);
-    margin: 0 auto 1rem;
-    background-image: url('../assets/images/teamLobby.png');
-    background-size: 700% auto;
-    background-repeat: no-repeat;
-}
 
 .service-card-general,
 .service-card-orthodontics,
@@ -689,6 +703,13 @@ footer a:hover {
     transition: transform 0.3s ease;
 }
 .offer-card:hover { transform: translateY(-6px); }
+.offer-card.is-visible,
+.empty-offers.is-visible,
+.treatment-about-card.is-visible,
+.about-step-card.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+}
 .offer-card::before {
     content: '';
     position: absolute;
@@ -780,6 +801,68 @@ footer a:hover {
 footer .footer-text { color: var(--blue-100); }
 footer .footer-links a { color: var(--blue-100); }
 footer .footer-divider { border-color: rgba(255,255,255,0.2); }
+
+.about-highlight-card {
+    background: linear-gradient(145deg, var(--blue-50), var(--white));
+    border: 1px solid var(--blue-100);
+    border-radius: 20px;
+    padding: 1.75rem;
+    box-shadow: var(--shadow);
+    height: 100%;
+}
+.about-highlight-card h5 { color: var(--blue-800); font-weight: 700; }
+.about-check-list { list-style: none; padding: 0; margin: 0; }
+.about-check-list li {
+    padding: 0.35rem 0 0.35rem 1.4rem;
+    position: relative;
+    color: var(--text-muted);
+    font-size: 0.95rem;
+}
+.about-check-list li::before {
+    content: '✓';
+    position: absolute;
+    left: 0;
+    color: var(--blue-500);
+    font-weight: 700;
+}
+.about-step-card {
+    background: var(--white);
+    border-radius: 16px;
+    padding: 1.5rem;
+    box-shadow: var(--shadow);
+    height: 100%;
+    border-top: 4px solid var(--blue-500);
+}
+.about-step-num {
+    display: inline-flex;
+    width: 36px;
+    height: 36px;
+    align-items: center;
+    justify-content: center;
+    background: var(--blue-600);
+    color: white;
+    font-weight: 800;
+    border-radius: 50%;
+    margin-bottom: 0.75rem;
+}
+.about-step-card h5 { color: var(--blue-800); font-weight: 700; }
+.treatment-about-card {
+    background: var(--white);
+    border-radius: 16px;
+    padding: 1.5rem;
+    height: 100%;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--blue-50);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.treatment-about-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 16px 40px rgba(30, 58, 138, 0.14);
+}
+.treatment-about-icon { font-size: 2rem; margin-bottom: 0.5rem; }
+.treatment-about-card h5 { color: var(--blue-800); font-weight: 700; margin-bottom: 0.5rem; }
+.treatment-about-card p { color: var(--text-muted); font-size: 0.92rem; margin: 0; }
+.about-treatments-grid { margin-bottom: 2rem; }
 
 .display-4, .display-5 {
     color: var(--blue-800);

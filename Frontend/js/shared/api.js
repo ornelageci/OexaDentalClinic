@@ -36,7 +36,16 @@ function requirePatient() {
 
 async function apiGet(path) {
     const res = await fetch(API_BASE_URL + path);
-    if (!res.ok) throw new Error(await res.text());
+    if (!res.ok) {
+        const text = await res.text();
+        try {
+            const j = JSON.parse(text);
+            throw new Error(j.error || j.detail || j.title || text);
+        } catch (e) {
+            if (e instanceof SyntaxError) throw new Error(text || res.statusText);
+            throw e;
+        }
+    }
     return res.json();
 }
 

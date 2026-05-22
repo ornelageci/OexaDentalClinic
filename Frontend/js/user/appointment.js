@@ -24,12 +24,26 @@ document.addEventListener('DOMContentLoaded', function() {
     const today = new Date();
     preferredDate.min = today.toISOString().split('T')[0];
 
+    function pick(obj, a, b) {
+        return obj[a] !== undefined && obj[a] !== null ? obj[a] : obj[b];
+    }
+
+    function isSunday(dateStr) {
+        if (!dateStr) return false;
+        var d = new Date(dateStr + 'T12:00:00');
+        return d.getDay() === 0;
+    }
+
     function formatPrice(p) {
-        var price = p.hasPromotion ? p.priceAfterDiscount : p.basePrice;
+        var hasPromo = pick(p, 'hasPromotion', 'HasPromotion');
+        var base = pick(p, 'basePrice', 'BasePrice');
+        var after = pick(p, 'priceAfterDiscount', 'PriceAfterDiscount');
+        var discount = pick(p, 'discountPercent', 'DiscountPercent');
+        var price = hasPromo ? after : base;
         var html = '<span class="treatment-price">' + price + ' EUR</span>';
-        if (p.hasPromotion) {
-            html += ' <span class="treatment-was">' + p.basePrice + ' EUR</span>';
-            html += ' <span class="treatment-badge">-' + p.discountPercent + '%</span>';
+        if (hasPromo) {
+            html += ' <span class="treatment-was">' + base + ' EUR</span>';
+            html += ' <span class="treatment-badge">-' + discount + '%</span>';
         }
         return html;
     }
@@ -40,12 +54,15 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         treatmentList.innerHTML = problems.map(function(p) {
+            var key = pick(p, 'key', 'Key');
+            var name = pick(p, 'name', 'Name');
+            var mins = pick(p, 'durationMinutes', 'DurationMinutes') || 60;
             return (
                 '<label class="treatment-option">' +
-                    '<input type="checkbox" class="treatment-check" value="' + p.key + '">' +
+                    '<input type="checkbox" class="treatment-check" value="' + key + '">' +
                     '<span class="treatment-info">' +
-                        '<span class="treatment-name">' + p.name + '</span>' +
-                        '<span class="treatment-meta">' + (p.durationMinutes || 60) + ' min · ' + formatPrice(p) + '</span>' +
+                        '<span class="treatment-name">' + name + '</span>' +
+                        '<span class="treatment-meta">' + mins + ' min · ' + formatPrice(p) + '</span>' +
                     '</span>' +
                 '</label>'
             );
@@ -74,17 +91,20 @@ document.addEventListener('DOMContentLoaded', function() {
         var total = 0;
         var totalWas = 0;
         keys.forEach(function(key) {
-            var p = problems.find(function(x) { return x.key === key; });
+            var p = problems.find(function(x) { return (pick(x, 'key', 'Key')) === key; });
             if (!p) return;
-            var price = p.hasPromotion ? p.priceAfterDiscount : p.basePrice;
-            total += price;
-            totalWas += p.basePrice;
-            lines.push('<div class="price-line"><span>' + p.name + '</span><span>' + price + ' EUR</span></div>');
+            var hasPromo = pick(p, 'hasPromotion', 'HasPromotion');
+            var base = pick(p, 'basePrice', 'BasePrice');
+            var after = pick(p, 'priceAfterDiscount', 'PriceAfterDiscount');
+            var price = hasPromo ? after : base;
+            total += Number(price);
+            totalWas += Number(base);
+            lines.push('<div class="price-line"><span>' + pick(p, 'name', 'Name') + '</span><span>' + price + ' EUR</span></div>');
         });
 
         var duration = keys.reduce(function(sum, key) {
-            var p = problems.find(function(x) { return x.key === key; });
-            return sum + (p ? (p.durationMinutes || 60) : 0);
+            var p = problems.find(function(x) { return (pick(x, 'key', 'Key')) === key; });
+            return sum + (p ? (pick(p, 'durationMinutes', 'DurationMinutes') || 60) : 0);
         }, 0);
 
         var html = lines.join('');
@@ -101,6 +121,18 @@ document.addEventListener('DOMContentLoaded', function() {
         loadTimeSlots();
     }
 
+    function onDateChange() {
+        if (isSunday(preferredDate.value)) {
+            alert('OEXA Dental Clinic is closed on Sundays. Please choose Monday–Saturday.');
+            preferredDate.value = '';
+            preferredTime.innerHTML = '<option value="">Select treatments and date first</option>';
+            preferredTime.disabled = true;
+            slotHint.textContent = 'Clinic closed on Sundays.';
+            return;
+        }
+        loadTimeSlots();
+    }
+
     async function loadTimeSlots() {
         var keys = getSelectedKeys();
         var date = preferredDate.value;
@@ -114,28 +146,45 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
+        if (isSunday(date)) {
+            preferredTime.innerHTML = '<option value="">Closed on Sundays</option>';
+            slotHint.textContent = 'Please pick a weekday or Saturday.';
+            return;
+        }
+
         try {
             var services = keys.join(',');
-            var slots = await apiGet('/api/Appointments/time-slots?date=' + encodeURIComponent(date) + '&services=' + encodeURIComponent(services));
+            var url = '/api/Appointments/time-slots?date=' + encodeURIComponent(date) + '&services=' + encodeURIComponent(services);
+            var slots = await apiGet(url);
 
-            if (!slots.length) {
-                preferredTime.innerHTML = '<option value="">No slots (clinic may be closed)</option>';
-                slotHint.textContent = 'Choose another date.';
+            if (!slots || !slots.length) {
+                preferredTime.innerHTML = '<option value="">No slots available</option>';
+                slotHint.textContent = 'Try another date or fewer treatments.';
                 return;
             }
 
             preferredTime.innerHTML = '<option value="">Select a time</option>' +
                 slots.map(function(s) {
-                    var label = s.available ? s.label : s.label + ' (unavailable)';
-                    return '<option value="' + s.time + '" ' + (s.available ? '' : 'disabled class="slot-unavailable"') + '>' + label + '</option>';
+                    var time = pick(s, 'time', 'Time');
+                    var label = pick(s, 'label', 'Label');
+                    var available = pick(s, 'available', 'Available');
+                    if (!available) label += ' (unavailable)';
+                    return '<option value="' + time + '" ' + (available ? '' : 'disabled') + '>' + label + '</option>';
                 }).join('');
 
             preferredTime.disabled = false;
-            var availableCount = slots.filter(function(s) { return s.available; }).length;
-            slotHint.textContent = availableCount + ' of ' + slots.length + ' slots available for your selected treatments.';
+            var availableCount = slots.filter(function(s) { return pick(s, 'available', 'Available'); }).length;
+            slotHint.textContent = availableCount + ' of ' + slots.length + ' slots available.';
         } catch (e) {
             preferredTime.innerHTML = '<option value="">Could not load slots</option>';
-            slotHint.textContent = 'Make sure the backend is running.';
+            var msg = (e && e.message) ? e.message : '';
+            if (msg.indexOf('error') >= 0 || msg.indexOf('{') === 0) {
+                try {
+                    var parsed = JSON.parse(msg);
+                    msg = parsed.error || parsed.detail || msg;
+                } catch (_) { /* keep raw */ }
+            }
+            slotHint.textContent = msg || 'Make sure the backend is running at http://localhost:5095';
         }
     }
 
@@ -143,10 +192,11 @@ document.addEventListener('DOMContentLoaded', function() {
         problems = items;
         renderTreatments();
     }).catch(function() {
-        treatmentList.innerHTML = '<p class="text-danger">Could not load treatments. Is the API running?</p>';
+        treatmentList.innerHTML = '<p class="text-danger">Could not load treatments. Run the API with dotnet run.</p>';
     });
 
-    preferredDate.addEventListener('change', loadTimeSlots);
+    preferredDate.addEventListener('change', onDateChange);
+    preferredDate.addEventListener('input', onDateChange);
 
     form.addEventListener('submit', async function(event) {
         event.preventDefault();
@@ -161,6 +211,11 @@ document.addEventListener('DOMContentLoaded', function() {
         var additionalNotes = document.getElementById('message').value.trim();
         var isSpecial = document.getElementById('isSpecial') ? document.getElementById('isSpecial').checked : false;
 
+        if (isSunday(date)) {
+            alert('Cannot book on Sundays — clinic is closed.');
+            return;
+        }
+
         if (!firstName || !lastName || !email || !phoneNumber || !date || !time || !keys.length) {
             alert('Please fill in all required fields and select at least one treatment.');
             return;
@@ -170,7 +225,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
         try {
             var check = await apiGet('/api/Appointments/availability?service=' + encodeURIComponent(keys.join(',')) + '&date=' + encodeURIComponent(dateFormatted) + '&time=' + time);
-            if (!check.available) {
+            var available = pick(check, 'available', 'Available');
+            if (!available) {
                 alert('This time slot is no longer available. Please choose another time.');
                 loadTimeSlots();
                 return;
@@ -193,7 +249,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 isSpecialAppointment: isSpecial,
                 patientUserId: user ? user.id : null
             });
-            alert('Appointment booked successfully! Reception will assign your dentist.\nStatus: ' + result.status);
+            alert('Appointment booked successfully! Reception will assign your dentist.\nStatus: ' + (result.status || result.Status));
             form.reset();
             priceSummary.style.display = 'none';
             renderTreatments();
