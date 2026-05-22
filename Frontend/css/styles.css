@@ -33,7 +33,7 @@ body {
 }
 
 .oexa-navbar {
-    background: linear-gradient(90deg, #ffffff 0%, #ffffff 12%, #93c5fd 45%, #3b82f6 70%, #1e3a8a 100%) !important;
+    background: linear-gradient(90deg, #ffffff 0%, #ffffff 20%, #bfdbfe 42%, #3b82f6 68%, #1e3a8a 100%) !important;
     box-shadow: 0 4px 24px rgba(30, 58, 138, 0.15);
     z-index: 1050 !important;
     padding: 0.5rem 0;
@@ -53,9 +53,11 @@ body {
 }
 
 .oexa-logo-img {
-    height: 48px;
+    height: 68px;
     width: auto;
-    border-radius: 8px;
+    max-width: 220px;
+    object-fit: contain;
+    border-radius: 10px;
 }
 
 .oexa-brand-text {
@@ -535,4 +537,253 @@ footer a:hover {
         margin-left: auto;
         margin-right: auto;
     }
+}
+
+/* Typography & page chrome */
+.text-brand { color: var(--blue-800); font-weight: 700; }
+.page-hero-section { padding: 2.5rem 0 4rem; }
+.page-hero h1 {
+    font-size: clamp(2rem, 4vw, 2.75rem);
+    font-weight: 800;
+    color: var(--blue-800);
+    margin-bottom: 0.5rem;
+}
+.page-hero .lead { max-width: 640px; margin: 0 auto; }
+
+.form-control-modern {
+    border: 1px solid var(--blue-100);
+    border-radius: 10px;
+    padding: 0.65rem 0.9rem;
+}
+.form-control-modern:focus {
+    border-color: var(--blue-500);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+.about-logo-hero {
+    background: linear-gradient(160deg, var(--white) 0%, var(--blue-50) 55%, var(--blue-100) 100%);
+    padding: 3rem 1rem 3.5rem;
+    margin-bottom: 0;
+}
+.about-logo-full {
+    max-width: min(520px, 92vw);
+    width: 100%;
+    height: auto;
+    object-fit: contain;
+    margin: 0 auto 1.5rem;
+    display: block;
+    filter: drop-shadow(0 12px 28px rgba(30, 58, 138, 0.15));
+}
+.about-logo-title {
+    color: var(--blue-800);
+    font-weight: 800;
+    font-size: clamp(1.75rem, 4vw, 2.5rem);
+}
+.about-logo-sub {
+    color: var(--text-muted);
+    font-size: 1.1rem;
+    margin: 0;
+}
+
+.landing-hero-img {
+    max-height: min(72vh, 520px);
+    object-fit: contain;
+}
+
+/* Booking */
+.treatment-picker {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    max-height: 320px;
+    overflow-y: auto;
+    padding-right: 0.25rem;
+}
+.treatment-option {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.85rem 1rem;
+    border: 2px solid var(--blue-100);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    background: var(--white);
+}
+.treatment-option:has(input:checked) {
+    border-color: var(--blue-500);
+    background: var(--blue-50);
+}
+.treatment-option input { margin-top: 0.25rem; accent-color: var(--blue-600); }
+.treatment-name { display: block; font-weight: 600; color: var(--blue-800); }
+.treatment-meta { display: block; font-size: 0.85rem; color: var(--text-muted); margin-top: 0.15rem; }
+.treatment-price { color: var(--blue-700); font-weight: 700; }
+.treatment-was { text-decoration: line-through; color: #94a3b8; margin-left: 0.35rem; font-size: 0.8rem; }
+.treatment-badge {
+    background: #dcfce7;
+    color: #166534;
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 0.1rem 0.4rem;
+    border-radius: 6px;
+    margin-left: 0.35rem;
+}
+.price-summary {
+    background: linear-gradient(135deg, var(--blue-50), var(--white));
+    border: 1px solid var(--blue-100);
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+}
+.price-line {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    margin-bottom: 0.35rem;
+}
+.price-total {
+    border-top: 1px dashed var(--blue-200);
+    padding-top: 0.5rem;
+    margin-top: 0.35rem;
+    color: var(--blue-800);
+    font-size: 1rem;
+}
+#preferredTime option.slot-unavailable,
+#preferredTime option:disabled {
+    color: #94a3b8 !important;
+    background: #f1f5f9;
+}
+.hours-list { list-style: none; padding: 0; margin: 0; }
+.hours-list li {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--blue-50);
+    color: var(--text-muted);
+}
+.hours-list strong { color: var(--blue-800); }
+.check-list { list-style: none; padding: 0; }
+.check-list li {
+    padding: 0.35rem 0 0.35rem 1.5rem;
+    position: relative;
+    color: var(--text-muted);
+}
+.check-list li::before {
+    content: '✓';
+    position: absolute;
+    left: 0;
+    color: var(--blue-500);
+    font-weight: 700;
+}
+
+/* Offers */
+.offers-section { background: var(--blue-50); }
+.offer-card {
+    background: var(--white);
+    border-radius: 20px;
+    padding: 1.75rem;
+    height: 100%;
+    box-shadow: var(--shadow);
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.3s ease;
+}
+.offer-card:hover { transform: translateY(-6px); }
+.offer-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--blue-400), var(--blue-700));
+}
+.offer-badge {
+    position: absolute;
+    top: 1rem; right: 1rem;
+    background: linear-gradient(135deg, #f59e0b, #ea580c);
+    color: white;
+    font-weight: 800;
+    padding: 0.35rem 0.75rem;
+    border-radius: 50px;
+    font-size: 0.9rem;
+}
+.offer-card h3 { color: var(--blue-800); font-weight: 800; padding-right: 4rem; }
+.offer-desc { color: var(--text-muted); }
+.offer-treatment { color: var(--blue-600); font-weight: 600; font-size: 0.9rem; }
+.offer-prices { margin: 1rem 0; }
+.offer-was { text-decoration: line-through; color: #94a3b8; margin-right: 0.75rem; }
+.offer-now { font-size: 1.5rem; font-weight: 800; color: var(--blue-700); }
+.offer-until { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0; }
+.empty-offers {
+    text-align: center;
+    padding: 3rem;
+    color: var(--text-muted);
+}
+.empty-offers i { font-size: 3rem; color: var(--blue-400); display: block; margin-bottom: 1rem; }
+
+/* Contact */
+.contact-row {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+    align-items: flex-start;
+}
+.contact-row-icon {
+    width: 44px; height: 44px;
+    border-radius: 12px;
+    background: var(--blue-100);
+    color: var(--blue-700);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    flex-shrink: 0;
+}
+.contact-row h6 { color: var(--blue-800); font-weight: 700; margin-bottom: 0.2rem; }
+.contact-row p { color: var(--text-muted); margin: 0; }
+.contact-row a { color: var(--blue-600); font-weight: 600; text-decoration: none; }
+.contact-row a:hover { color: var(--blue-800); text-decoration: underline; }
+
+.social-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+}
+@media (max-width: 576px) {
+    .social-grid { grid-template-columns: 1fr; }
+}
+.social-tile {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 1.25rem;
+    border-radius: 14px;
+    text-decoration: none;
+    transition: transform 0.25s, box-shadow 0.25s;
+    border: 2px solid transparent;
+}
+.social-tile i { font-size: 1.75rem; margin-bottom: 0.5rem; }
+.social-tile-label { font-weight: 700; font-size: 1rem; }
+.social-tile-handle { font-size: 0.8rem; opacity: 0.85; }
+.social-tile.instagram { background: linear-gradient(135deg, #fdf2f8, #fce7f3); color: #9d174d; border-color: #fbcfe8; }
+.social-tile.whatsapp { background: linear-gradient(135deg, #ecfdf5, #d1fae5); color: #047857; border-color: #a7f3d0; }
+.social-tile.email { background: linear-gradient(135deg, var(--blue-50), var(--blue-100)); color: var(--blue-800); border-color: var(--blue-200); }
+.social-tile.facebook { background: linear-gradient(135deg, #eff6ff, #dbeafe); color: #1d4ed8; border-color: #bfdbfe; }
+.social-tile:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(30, 58, 138, 0.12); }
+
+.map-card {
+    background: var(--blue-50);
+    border-radius: 12px;
+    padding: 1.25rem;
+    border: 1px solid var(--blue-100);
+}
+
+footer .footer-text { color: var(--blue-100); }
+footer .footer-links a { color: var(--blue-100); }
+footer .footer-divider { border-color: rgba(255,255,255,0.2); }
+
+.display-4, .display-5 {
+    color: var(--blue-800);
+}
+.card-title {
+    color: var(--blue-800);
 }

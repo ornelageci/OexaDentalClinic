@@ -18,6 +18,7 @@ builder.Services.PostConfigure<EmailSettings>(options =>
         options.SmtpPassword = pwd;
 });
 builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<AppointmentSchedulingService>();
 builder.Services.AddHostedService<AppointmentReminderService>();
 
 builder.Services.AddCors(options =>
@@ -45,9 +46,7 @@ using (var scope = app.Services.CreateScope())
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
 
-    logger.LogInformation("Applying database migrations...");
-    db.Database.Migrate();
-    logger.LogInformation("Migrations applied.");
+    DatabaseBootstrap.ApplyMigrationsAndRepairs(db, logger);
 
     DbSeeder.Seed(db);
     logger.LogInformation("Database seed complete.");

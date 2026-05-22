@@ -27,12 +27,43 @@ namespace OexaDentalClinic.Api.Controllers
         [HttpGet("active")]
         public async Task<IActionResult> GetActive()
         {
-            var today = DateTime.UtcNow.Date;
+            var today = DateTime.Today;
             var items = await _db.Promotions
                 .Where(p => p.IsActive && p.StartDate <= today && p.EndDate >= today)
                 .OrderByDescending(p => p.DiscountPercent)
                 .ToListAsync();
-            return Ok(items);
+
+            var problems = await _db.DentalProblems.ToDictionaryAsync(p => p.Key, p => p);
+
+            var result = items.Select(p =>
+            {
+                decimal? basePrice = null;
+                decimal? priceAfter = null;
+                string? treatmentName = null;
+
+                if (!string.IsNullOrEmpty(p.ProblemKey) && problems.TryGetValue(p.ProblemKey, out var prob))
+                {
+                    treatmentName = prob.Name;
+                    basePrice = prob.BasePrice;
+                    priceAfter = Math.Round(prob.BasePrice * (100 - p.DiscountPercent) / 100m, 2);
+                }
+
+                return new
+                {
+                    p.Id,
+                    p.Title,
+                    p.Description,
+                    p.DiscountPercent,
+                    p.StartDate,
+                    p.EndDate,
+                    p.ProblemKey,
+                    TreatmentName = treatmentName,
+                    BasePrice = basePrice,
+                    PriceAfterDiscount = priceAfter
+                };
+            });
+
+            return Ok(result);
         }
 
         [HttpPost]

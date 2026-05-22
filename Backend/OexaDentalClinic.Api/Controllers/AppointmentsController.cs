@@ -14,11 +14,13 @@ namespace OexaDentalClinic.Api.Controllers
     {
         private readonly AppDbContext _db;
         private readonly IEmailService _email;
+        private readonly AppointmentSchedulingService _scheduling;
 
-        public AppointmentsController(AppDbContext db, IEmailService email)
+        public AppointmentsController(AppDbContext db, IEmailService email, AppointmentSchedulingService scheduling)
         {
             _db = db;
             _email = email;
+            _scheduling = scheduling;
         }
 
         [HttpPost]
@@ -34,12 +36,21 @@ namespace OexaDentalClinic.Api.Controllers
             if (preferredDateTime.Value < DateTime.Now)
                 return BadRequest(new { error = "Cannot book appointments in the past." });
 
-            if (await IsSlotTaken(dto.ServiceNeeded.Trim(), preferredDateTime.Value))
-                return BadRequest(new { error = "Selected time slot is not available." });
+            var serviceKeys = AppointmentSchedulingService.ParseServiceKeys(dto.ServiceNeeded.Trim());
+            if (serviceKeys.Count == 0)
+                return BadRequest(new { error = "Select at least one treatment." });
 
-            var problemKey = dto.ServiceNeeded.Trim();
-            if (!await _db.DentalProblems.AnyAsync(p => p.Key == problemKey))
-                return BadRequest(new { error = "Invalid problem selected." });
+            try
+            {
+                await _scheduling.GetProblemsForKeysAsync(serviceKeys);
+            }
+            catch
+            {
+                return BadRequest(new { error = "Invalid treatment selected." });
+            }
+
+            if (!await _scheduling.IsSlotAvailableAsync(serviceKeys, preferredDateTime.Value))
+                return BadRequest(new { error = "Selected time slot is not available." });
 
             var appointment = new Appointment
             {
@@ -48,7 +59,7 @@ namespace OexaDentalClinic.Api.Controllers
                 Email = dto.Email.Trim(),
                 PhoneNumber = dto.PhoneNumber.Trim(),
                 PreferredDateTime = preferredDateTime.Value,
-                ServiceNeeded = problemKey,
+                ServiceNeeded = string.Join(",", serviceKeys),
                 AdditionalNotes = string.IsNullOrWhiteSpace(dto.AdditionalNotes) ? null : dto.AdditionalNotes.Trim(),
                 IsSpecialAppointment = dto.IsSpecialAppointment,
                 PatientUserId = dto.PatientUserId,
@@ -82,7 +93,7 @@ namespace OexaDentalClinic.Api.Controllers
                 a.Email,
                 a.PreferredDateTime,
                 ProblemKey = a.ServiceNeeded,
-                ProblemName = problems.GetValueOrDefault(a.ServiceNeeded, a.ServiceNeeded),
+                ProblemName = FormatServiceNames(a.ServiceNeeded, problems),
                 a.Status
             }));
         }
@@ -96,7 +107,7 @@ namespace OexaDentalClinic.Api.Controllers
                 query = query.Where(a => a.Email.ToLower() == email.Trim().ToLower());
 
             if (!string.IsNullOrWhiteSpace(service))
-                query = query.Where(a => a.ServiceNeeded == service.Trim());
+                query = query.Where(a => a.ServiceNeeded.Contains(service.Trim()));
 
             if (!string.IsNullOrWhiteSpace(status))
                 query = query.Where(a => a.Status == status.Trim());
@@ -111,6 +122,31 @@ namespace OexaDentalClinic.Api.Controllers
             return Ok(result);
         }
 
+        [HttpGet("time-slots")]
+        public async Task<IActionResult> GetTimeSlots([FromQuery] string date, [FromQuery] string services)
+        {
+            if (string.IsNullOrWhiteSpace(date) || string.IsNullOrWhiteSpace(services))
+                return BadRequest(new { error = "Date and services are required." });
+
+            var keys = AppointmentSchedulingService.ParseServiceKeys(services);
+            if (keys.Count == 0)
+                return BadRequest(new { error = "Select at least one treatment." });
+
+            try
+            {
+                var slots = await _scheduling.GetTimeSlotsAsync(date.Trim(), keys);
+                return Ok(slots);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+            catch (InvalidOperationException)
+            {
+                return BadRequest(new { error = "Invalid treatment selected." });
+            }
+        }
+
         [HttpGet("availability")]
         public async Task<IActionResult> CheckAvailability([FromQuery] string service, [FromQuery] string date, [FromQuery] string time)
         {
@@ -118,8 +154,19 @@ namespace OexaDentalClinic.Api.Controllers
             if (preferredDateTime == null)
                 return BadRequest(new { error = "Invalid date or time." });
 
-            var available = !await IsSlotTaken(service.Trim(), preferredDateTime.Value);
-            return Ok(new { available });
+            var keys = AppointmentSchedulingService.ParseServiceKeys(service.Trim());
+            if (keys.Count == 0)
+                return BadRequest(new { error = "Select at least one treatment." });
+
+            try
+            {
+                var available = await _scheduling.IsSlotAvailableAsync(keys, preferredDateTime.Value);
+                return Ok(new { available });
+            }
+            catch (InvalidOperationException)
+            {
+                return BadRequest(new { error = "Invalid treatment selected." });
+            }
         }
 
         [HttpGet("{id:int}")]
@@ -171,9 +218,33 @@ namespace OexaDentalClinic.Api.Controllers
             if (dentist == null || dentist.Role != "Dentist")
                 return BadRequest(new { error = "Invalid dentist." });
 
-            var problem = await _db.DentalProblems.FirstOrDefaultAsync(p => p.Key == appt.ServiceNeeded);
-            if (problem != null && dentist.DentistServiceKey != problem.DentistCategoryKey)
-                return BadRequest(new { error = "This dentist does not handle the selected problem." });
+            var keys = AppointmentSchedulingService.ParseServiceKeys(appt.ServiceNeeded);
+            var problems = await _db.DentalProblems.Where(p => keys.Contains(p.Key)).ToListAsync();
+            if (problems.Count == 0)
+                return BadRequest(new { error = "Invalid treatments on appointment." });
+
+            if (problems.Any(p => p.DentistCategoryKey != dentist.DentistServiceKey))
+                return BadRequest(new { error = "This dentist does not handle all selected treatments." });
+
+            var duration = problems.Sum(p => p.DurationMinutes);
+            var start = appt.PreferredDateTime;
+            var end = start.AddMinutes(duration);
+            var allProblems = await _db.DentalProblems.ToDictionaryAsync(p => p.Key, p => p.DurationMinutes);
+
+            var otherAppts = await _db.Appointments
+                .Where(a => a.Id != id && a.Status != "Cancelled" && a.AssignedDentistUserId == dentist.Id)
+                .Where(a => a.PreferredDateTime.Date == start.Date)
+                .ToListAsync();
+
+            foreach (var other in otherAppts)
+            {
+                var otherKeys = AppointmentSchedulingService.ParseServiceKeys(other.ServiceNeeded);
+                var otherDuration = otherKeys.Where(allProblems.ContainsKey).Sum(k => allProblems[k]);
+                if (otherDuration <= 0) otherDuration = 60;
+                var otherEnd = other.PreferredDateTime.AddMinutes(otherDuration);
+                if (start < otherEnd && other.PreferredDateTime < end)
+                    return BadRequest(new { error = "Dentist is not available at this time." });
+            }
 
             appt.AssignedDentistUserId = dentist.Id;
             await _db.SaveChangesAsync();
@@ -191,28 +262,24 @@ namespace OexaDentalClinic.Api.Controllers
             if (preferredDateTime == null)
                 return BadRequest(new { error = "Invalid date or time format." });
 
-            var service = string.IsNullOrWhiteSpace(dto.ServiceNeeded) ? appt.ServiceNeeded : dto.ServiceNeeded.Trim();
+            var serviceKeys = string.IsNullOrWhiteSpace(dto.ServiceNeeded)
+                ? AppointmentSchedulingService.ParseServiceKeys(appt.ServiceNeeded)
+                : AppointmentSchedulingService.ParseServiceKeys(dto.ServiceNeeded.Trim());
 
-            if (await _db.Appointments.AnyAsync(a =>
-                a.Id != id &&
-                a.ServiceNeeded == service &&
-                a.PreferredDateTime == preferredDateTime.Value &&
-                a.Status != "Cancelled"))
+            if (!await _scheduling.IsSlotAvailableAsync(serviceKeys, preferredDateTime.Value, id))
                 return BadRequest(new { error = "Selected time slot is not available." });
 
             appt.PreferredDateTime = preferredDateTime.Value;
-            appt.ServiceNeeded = service;
+            appt.ServiceNeeded = string.Join(",", serviceKeys);
             appt.Status = "Booked";
             await _db.SaveChangesAsync();
             return Ok(appt);
         }
 
-        private async Task<bool> IsSlotTaken(string service, DateTime dateTime)
+        private static string FormatServiceNames(string serviceNeeded, Dictionary<string, string> problems)
         {
-            return await _db.Appointments.AnyAsync(a =>
-                a.ServiceNeeded == service &&
-                a.PreferredDateTime == dateTime &&
-                a.Status != "Cancelled");
+            var keys = AppointmentSchedulingService.ParseServiceKeys(serviceNeeded);
+            return string.Join(", ", keys.Select(k => problems.GetValueOrDefault(k, k)));
         }
 
         private static DateTime? ParseDateTime(string date, string time)

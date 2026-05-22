@@ -18,10 +18,10 @@ namespace OexaDentalClinic.Api.Controllers
         [HttpGet]
         public async Task<IActionResult> GetAll()
         {
-            var today = DateTime.UtcNow.Date;
+            var today = DateTime.Today;
             var problems = await _db.DentalProblems.OrderBy(p => p.Name).ToListAsync();
             var promos = await _db.Promotions
-                .Where(p => p.IsActive && p.StartDate <= today && p.EndDate >= today && p.ProblemKey != null)
+                .Where(p => p.IsActive && p.ProblemKey != null && p.StartDate <= today && p.EndDate >= today)
                 .ToListAsync();
 
             var result = problems.Select(p =>
@@ -37,11 +37,13 @@ namespace OexaDentalClinic.Api.Controllers
                     p.Name,
                     p.Description,
                     p.BasePrice,
+                    p.DurationMinutes,
                     p.DentistCategoryKey,
                     HasPromotion = promo != null,
                     PromotionTitle = promo?.Title,
                     DiscountPercent = promo?.DiscountPercent,
-                    PriceAfterDiscount = discounted
+                    PriceAfterDiscount = discounted,
+                    DisplayPrice = discounted ?? p.BasePrice
                 };
             });
 

@@ -5,25 +5,34 @@ document.addEventListener('DOMContentLoaded', function() {
     apiGet('/api/Promotions/active')
         .then(function(items) {
             if (!items.length) {
-                list.innerHTML = '<div class="col-12 text-center text-muted">No active offers right now.</div>';
+                list.innerHTML = '<div class="col-12"><div class="empty-offers fade-in-up"><i class="bi bi-gift"></i><p>No active offers right now. Check back soon!</p></div></div>';
                 return;
             }
-            list.innerHTML = items.map(function(p) {
+            list.innerHTML = items.map(function(p, i) {
+                var hasPrice = p.basePrice != null && p.priceAfterDiscount != null;
+                var priceBlock = hasPrice
+                    ? '<div class="offer-prices">' +
+                        '<span class="offer-was">' + p.basePrice + ' EUR</span>' +
+                        '<span class="offer-now">' + p.priceAfterDiscount + ' EUR</span>' +
+                      '</div>'
+                    : '';
+
                 return (
-                    '<div class="col-md-6 mb-4">' +
-                        '<div class="card h-100">' +
-                            '<div class="card-body">' +
-                                '<h5 class="card-title">' + p.title + '</h5>' +
-                                '<p class="text-muted">' + (p.description || '') + '</p>' +
-                                '<p><strong>' + p.discountPercent + '% off</strong></p>' +
-                                '<p class="small mb-0">Until: ' + new Date(p.endDate).toLocaleDateString() + '</p>' +
-                            '</div>' +
-                        '</div>' +
+                    '<div class="col-md-6 col-lg-4 mb-4">' +
+                        '<article class="offer-card fade-in-up" style="animation-delay:' + (i * 0.08) + 's">' +
+                            '<div class="offer-badge">-' + p.discountPercent + '%</div>' +
+                            '<h3>' + p.title + '</h3>' +
+                            '<p class="offer-desc">' + (p.description || '') + '</p>' +
+                            (p.treatmentName ? '<p class="offer-treatment"><i class="bi bi-heart-pulse"></i> ' + p.treatmentName + '</p>' : '') +
+                            priceBlock +
+                            '<p class="offer-until"><i class="bi bi-calendar-event"></i> Valid until ' + new Date(p.endDate).toLocaleDateString() + '</p>' +
+                            '<a href="book-appointment.html" class="btn btn-primary btn-sm mt-2">Book with offer</a>' +
+                        '</article>' +
                     '</div>'
                 );
             }).join('');
         })
         .catch(function() {
-            list.innerHTML = '<div class="col-12 text-center text-danger">Could not load offers.</div>';
+            list.innerHTML = '<div class="col-12 text-center text-danger">Could not load offers. Is the API running?</div>';
         });
 });

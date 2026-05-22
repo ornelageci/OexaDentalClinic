@@ -5,19 +5,24 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Offers - Oexa Dental Clinic</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <link rel="stylesheet" href="../../css/styles.css">
 </head>
 <body>
     <nav class="navbar fixed-top" id="navbar"></nav>
 
-    <section class="services-section py-5">
+    <section class="offers-section page-hero-section">
         <div class="container">
-            <h1 class="display-5 fw-bold text-center mb-4">Special Offers</h1>
-            <div class="row" id="offersList"></div>
+            <div class="page-hero text-center mb-5 fade-in-up">
+                <div class="eyebrow">Save on care</div>
+                <h1>Special Offers</h1>
+                <p class="lead text-muted">Active promotions are applied automatically when you book the matching treatment.</p>
+            </div>
+            <div class="row stagger-children" id="offersList"></div>
         </div>
     </section>
 
-    <footer class="bg-dark text-white py-4" id="footer"></footer>
+    <footer class="text-white py-4" id="footer"></footer>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="../../js/shared/api.js"></script>
     <script src="../../js/user/navbar.js"></script>

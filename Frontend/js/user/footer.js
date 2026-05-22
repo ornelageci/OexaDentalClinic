@@ -7,11 +7,11 @@ document.addEventListener('DOMContentLoaded', function() {
             <div class="row">
                 <div class="col-md-4 mb-3">
                     <h5>Oexa Dental Clinic</h5>
-                    <p>Your trusted partner in dental health and wellness. We are committed to providing exceptional dental care.</p>
+                    <p class="footer-text">Your trusted partner in dental health. We are committed to exceptional, gentle care for the whole family.</p>
                 </div>
                 <div class="col-md-4 mb-3">
                     <h5>Quick Links</h5>
-                    <ul class="list-unstyled">
+                    <ul class="list-unstyled footer-links">
                         <li><a href="index.html">Home</a></li>
                         <li><a href="about.html">About Us</a></li>
                         <li><a href="services.html">Services</a></li>
@@ -26,12 +26,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
                 <div class="col-md-4 mb-3">
                     <h5>Contact Info</h5>
-                    <p> Tirane Delijorgji<br> WhatsApp: +355 69 68 67 665<br> Instagram: @oexadentalclinic<br> Email: info@oexadental.com</p>
+                    <p class="footer-text mb-1">📍 Tirane Delijorgji</p>
+                    <p class="footer-text mb-1">📱 <a href="https://wa.me/355696851089" target="_blank" rel="noopener">+355 69 685 1089</a></p>
+                    <p class="footer-text mb-1">📧 <a href="mailto:info@oexadentalclinic.com">info@oexadentalclinic.com</a></p>
+                    <p class="footer-text mb-0">📸 @oexadentalclinic</p>
                 </div>
             </div>
-            <hr class="my-4">
+            <hr class="my-4 footer-divider">
             <div class="text-center">
-                <p>&copy; ${new Date().getFullYear()} Oexa Dental Clinic. All rights reserved.</p>
+                <p class="mb-0 small">&copy; ${new Date().getFullYear()} Oexa Dental Clinic. All rights reserved.</p>
             </div>
         </div>
     `;

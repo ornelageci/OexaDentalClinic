@@ -15,53 +15,164 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     let problems = [];
+    const treatmentList = document.getElementById('treatmentList');
+    const priceSummary = document.getElementById('priceSummary');
+    const preferredDate = document.getElementById('preferredDate');
+    const preferredTime = document.getElementById('preferredTime');
+    const slotHint = document.getElementById('slotHint');
 
-    apiGet('/api/Problems').then(function(items) {
-        problems = items;
-        const sel = document.getElementById('service');
-        sel.innerHTML = '<option value="">Select your problem</option>' +
-            items.map(function(p) {
-                return '<option value="' + p.key + '">' + p.name + '</option>';
-            }).join('');
-    }).catch(function() {
-        document.getElementById('service').innerHTML = '<option value="">Could not load problems</option>';
-    });
+    const today = new Date();
+    preferredDate.min = today.toISOString().split('T')[0];
 
-    document.getElementById('service').addEventListener('change', function() {
-        const p = problems.find(function(x) { return x.key === this.value; }.bind(this));
-        const box = document.getElementById('pricePreview');
-        if (!p || !box) return;
+    function formatPrice(p) {
+        var price = p.hasPromotion ? p.priceAfterDiscount : p.basePrice;
+        var html = '<span class="treatment-price">' + price + ' EUR</span>';
         if (p.hasPromotion) {
-            box.innerHTML = '<span style="text-decoration:line-through">' + p.basePrice + ' EUR</span> ' +
-                '<span class="text-danger">-' + p.discountPercent + '%</span> ' +
-                '<strong>' + p.priceAfterDiscount + ' EUR</strong>';
-        } else {
-            box.innerHTML = '<strong>' + p.basePrice + ' EUR</strong>';
+            html += ' <span class="treatment-was">' + p.basePrice + ' EUR</span>';
+            html += ' <span class="treatment-badge">-' + p.discountPercent + '%</span>';
         }
-    });
+        return html;
+    }
 
-    form.addEventListener('submit', async function(event) {
-        event.preventDefault();
+    function renderTreatments() {
+        if (!problems.length) {
+            treatmentList.innerHTML = '<p class="text-danger">Could not load treatments.</p>';
+            return;
+        }
+        treatmentList.innerHTML = problems.map(function(p) {
+            return (
+                '<label class="treatment-option">' +
+                    '<input type="checkbox" class="treatment-check" value="' + p.key + '">' +
+                    '<span class="treatment-info">' +
+                        '<span class="treatment-name">' + p.name + '</span>' +
+                        '<span class="treatment-meta">' + (p.durationMinutes || 60) + ' min · ' + formatPrice(p) + '</span>' +
+                    '</span>' +
+                '</label>'
+            );
+        }).join('');
 
-        const firstName = document.getElementById('firstName').value.trim();
-        const lastName = document.getElementById('lastName').value.trim();
-        const email = document.getElementById('email').value.trim();
-        const phoneNumber = document.getElementById('phone').value.trim();
-        const preferredDate = document.getElementById('preferredDate').value;
-        const preferredTime = document.getElementById('preferredTime').value;
-        const serviceNeeded = document.getElementById('service').value;
-        const additionalNotes = document.getElementById('message').value.trim();
-        const isSpecial = document.getElementById('isSpecial') ? document.getElementById('isSpecial').checked : false;
+        document.querySelectorAll('.treatment-check').forEach(function(cb) {
+            cb.addEventListener('change', onSelectionChange);
+        });
+    }
 
-        if (!firstName || !lastName || !email || !phoneNumber || !preferredDate || !preferredTime || !serviceNeeded) {
-            alert('Please fill in all required fields.');
+    function getSelectedKeys() {
+        return Array.from(document.querySelectorAll('.treatment-check:checked')).map(function(el) {
+            return el.value;
+        });
+    }
+
+    function updatePriceSummary() {
+        var keys = getSelectedKeys();
+        if (!keys.length) {
+            priceSummary.style.display = 'none';
+            priceSummary.innerHTML = '';
+            return;
+        }
+
+        var lines = [];
+        var total = 0;
+        var totalWas = 0;
+        keys.forEach(function(key) {
+            var p = problems.find(function(x) { return x.key === key; });
+            if (!p) return;
+            var price = p.hasPromotion ? p.priceAfterDiscount : p.basePrice;
+            total += price;
+            totalWas += p.basePrice;
+            lines.push('<div class="price-line"><span>' + p.name + '</span><span>' + price + ' EUR</span></div>');
+        });
+
+        var duration = keys.reduce(function(sum, key) {
+            var p = problems.find(function(x) { return x.key === key; });
+            return sum + (p ? (p.durationMinutes || 60) : 0);
+        }, 0);
+
+        var html = lines.join('');
+        html += '<div class="price-line price-total"><span>Estimated visit (' + duration + ' min)</span><strong>' + total.toFixed(2) + ' EUR</strong></div>';
+        if (totalWas > total) {
+            html += '<div class="small text-success">You save ' + (totalWas - total).toFixed(2) + ' EUR with current promotions</div>';
+        }
+        priceSummary.innerHTML = html;
+        priceSummary.style.display = 'block';
+    }
+
+    function onSelectionChange() {
+        updatePriceSummary();
+        loadTimeSlots();
+    }
+
+    async function loadTimeSlots() {
+        var keys = getSelectedKeys();
+        var date = preferredDate.value;
+
+        preferredTime.innerHTML = '<option value="">Loading times...</option>';
+        preferredTime.disabled = true;
+        slotHint.textContent = '';
+
+        if (!keys.length || !date) {
+            preferredTime.innerHTML = '<option value="">Select treatments and date first</option>';
             return;
         }
 
         try {
-            const check = await apiGet('/api/Appointments/availability?service=' + encodeURIComponent(serviceNeeded) + '&date=' + preferredDate + '&time=' + preferredTime);
+            var services = keys.join(',');
+            var slots = await apiGet('/api/Appointments/time-slots?date=' + encodeURIComponent(date) + '&services=' + encodeURIComponent(services));
+
+            if (!slots.length) {
+                preferredTime.innerHTML = '<option value="">No slots (clinic may be closed)</option>';
+                slotHint.textContent = 'Choose another date.';
+                return;
+            }
+
+            preferredTime.innerHTML = '<option value="">Select a time</option>' +
+                slots.map(function(s) {
+                    var label = s.available ? s.label : s.label + ' (unavailable)';
+                    return '<option value="' + s.time + '" ' + (s.available ? '' : 'disabled class="slot-unavailable"') + '>' + label + '</option>';
+                }).join('');
+
+            preferredTime.disabled = false;
+            var availableCount = slots.filter(function(s) { return s.available; }).length;
+            slotHint.textContent = availableCount + ' of ' + slots.length + ' slots available for your selected treatments.';
+        } catch (e) {
+            preferredTime.innerHTML = '<option value="">Could not load slots</option>';
+            slotHint.textContent = 'Make sure the backend is running.';
+        }
+    }
+
+    apiGet('/api/Problems').then(function(items) {
+        problems = items;
+        renderTreatments();
+    }).catch(function() {
+        treatmentList.innerHTML = '<p class="text-danger">Could not load treatments. Is the API running?</p>';
+    });
+
+    preferredDate.addEventListener('change', loadTimeSlots);
+
+    form.addEventListener('submit', async function(event) {
+        event.preventDefault();
+
+        var keys = getSelectedKeys();
+        var firstName = document.getElementById('firstName').value.trim();
+        var lastName = document.getElementById('lastName').value.trim();
+        var email = document.getElementById('email').value.trim();
+        var phoneNumber = document.getElementById('phone').value.trim();
+        var date = preferredDate.value;
+        var time = preferredTime.value;
+        var additionalNotes = document.getElementById('message').value.trim();
+        var isSpecial = document.getElementById('isSpecial') ? document.getElementById('isSpecial').checked : false;
+
+        if (!firstName || !lastName || !email || !phoneNumber || !date || !time || !keys.length) {
+            alert('Please fill in all required fields and select at least one treatment.');
+            return;
+        }
+
+        var dateFormatted = date.split('-').reverse().join('.');
+
+        try {
+            var check = await apiGet('/api/Appointments/availability?service=' + encodeURIComponent(keys.join(',')) + '&date=' + encodeURIComponent(dateFormatted) + '&time=' + time);
             if (!check.available) {
-                alert('This time slot is not available. Please choose another time.');
+                alert('This time slot is no longer available. Please choose another time.');
+                loadTimeSlots();
                 return;
             }
         } catch {
@@ -70,21 +181,24 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         try {
-            const result = await apiPost('/api/Appointments', {
+            var result = await apiPost('/api/Appointments', {
                 firstName: firstName,
                 lastName: lastName,
                 email: email,
                 phoneNumber: phoneNumber,
-                preferredDate: preferredDate,
-                preferredTime: preferredTime,
-                serviceNeeded: serviceNeeded,
+                preferredDate: dateFormatted,
+                preferredTime: time,
+                serviceNeeded: keys.join(','),
                 additionalNotes: additionalNotes || null,
                 isSpecialAppointment: isSpecial,
                 patientUserId: user ? user.id : null
             });
-            alert('Appointment booked! Reception will assign a dentist.\nStatus: ' + result.status);
+            alert('Appointment booked successfully! Reception will assign your dentist.\nStatus: ' + result.status);
             form.reset();
-            document.getElementById('pricePreview').innerHTML = '';
+            priceSummary.style.display = 'none';
+            renderTreatments();
+            preferredTime.innerHTML = '<option value="">Select treatments and date first</option>';
+            preferredTime.disabled = true;
         } catch (err) {
             alert('Booking failed. ' + (err.message || ''));
         }

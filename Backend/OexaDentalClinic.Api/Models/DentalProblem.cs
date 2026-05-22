@@ -17,6 +17,9 @@ namespace OexaDentalClinic.Api.Models
 
         public decimal BasePrice { get; set; }
 
+        /// <summary>How long the treatment typically takes (used for scheduling).</summary>
+        public int DurationMinutes { get; set; } = 60;
+
         [Required, MaxLength(50)]
         public string DentistCategoryKey { get; set; } = null!;
     }

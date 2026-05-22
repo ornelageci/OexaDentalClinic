@@ -27,9 +27,8 @@ document.addEventListener('DOMContentLoaded', function() {
     navbar.className = 'navbar navbar-expand-lg fixed-top oexa-navbar';
     navbar.innerHTML = `
         <div class="container-fluid oexa-nav-inner">
-            <a class="navbar-brand oexa-brand" href="index.html">
-                <img src="../../assets/images/oexaLogo.JPG" alt="OEXA" class="oexa-logo-img">
-                <span class="oexa-brand-text">OEXA <small>DENTAL CLINIC</small></span>
+            <a class="navbar-brand oexa-brand" href="index.html" aria-label="OEXA Dental Clinic home">
+                <img src="../../assets/images/oexaLogo.JPG" alt="OEXA Dental Clinic" class="oexa-logo-img">
             </a>
 
             <ul class="navbar-nav oexa-nav-pages ms-auto d-none d-lg-flex">
