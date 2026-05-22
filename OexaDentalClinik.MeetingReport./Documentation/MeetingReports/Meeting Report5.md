@@ -5,12 +5,12 @@ April 5, 2025
 
 ## Participants
 - Ornela Geci
-- Alesia
-- Aleko
-- Xhule
-- Elvis
+- Alesia Toci
+- Alkeo Gaci 
+- Xhule Metaj 
+- Elvis Sula 
 - Ornela Braho
-- Xhesi
+- Xhesi Azizaj 
 
 ## Objectives
 - Final system review
@@ -30,12 +30,12 @@ April 5, 2025
 
 ## Tasks Assigned
 - Ornela Geci → Final documentation and diagrams
-- Aleko → Database final review
-- Alesia → Final frontend adjustments
-- Xhule → Meeting reports and documentation formatting
-- Elvis → Payment module final testing
+- Alkeo Gaci → Database final review
+- Alesia Toci → Final frontend adjustments
+- Xhule Metaj → Meeting reports and documentation formatting
+- Elvis Sula → Payment module final testing
 - Ornela Braho → Notification review
-- Xhesi → Presentation preparation and final testing
+- Xhesi Azizaj → Presentation preparation and final testing
 
 ## Next Meeting
 Project Presentation Day
