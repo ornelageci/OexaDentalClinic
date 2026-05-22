@@ -5,12 +5,12 @@ March 8, 2025
 
 ## Participants
 - Ornela Geci
-- Alesia
-- Aleko
-- Xhule
-- Elvis
+- Alesia Toci
+- Alkeo Gaci 
+- Xhule Metaj 
+- Elvis Sula 
 - Ornela Braho
-- Xhesi
+- Xhesi Azizaj 
 
 ## Objectives
 - Discuss project idea
@@ -30,12 +30,12 @@ March 8, 2025
 
 ## Tasks Assigned
 - Ornela Geci → Project structure and UML planning
-- Aleko → Database schema
-- Alesia → Frontend UI ideas
-- Xhule → Documentation setup
-- Elvis → API research
+- Alkeo Gaci  → Database schema
+- Alesia Toci → Frontend UI ideas
+- Xhule Metaj → Documentation setup
+- Elvis Sula → API research
 - Ornela Braho → Notification feature ideas
-- Xhesi → Testing preparation
+- Xhesi Azizaj → Testing preparation
 
 ## Next Meeting
 March 15, 2025
