@@ -43,8 +43,14 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+
+    logger.LogInformation("Applying database migrations...");
     db.Database.Migrate();
+    logger.LogInformation("Migrations applied.");
+
     DbSeeder.Seed(db);
+    logger.LogInformation("Database seed complete.");
 }
 
 if (app.Environment.IsDevelopment())
