@@ -5,12 +5,12 @@ March 29, 2025
 
 ## Participants
 - Ornela Geci
-- Alesia
-- Aleko
-- Xhule
-- Elvis
+- Alesia Toci
+- Alkeo Gaci 
+- Xhule Metaj 
+- Elvis Sula 
 - Ornela Braho
-- Xhesi
+- Xhesi Azizaj 
 
 ## Objectives
 - System integration
@@ -29,12 +29,12 @@ March 29, 2025
 
 ## Tasks Assigned
 - Ornela Geci → System integration
-- Aleko → Database fixes
-- Alesia → UI improvements
-- Xhule → Documentation updates
-- Elvis → Payment testing
+- Alkeo Gaci → Database fixes
+- Alesia Toci → UI improvements
+- Xhule  Metaj→ Documentation updates
+- Elvis Sula → Payment testing
 - Ornela Braho → Notifications and promotions
-- Xhesi → Bug tracking and testing
+- XhesiAzizaj → Bug tracking and testing
 
 ## Next Meeting
 April 5, 2025
