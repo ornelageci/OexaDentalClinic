@@ -70,6 +70,9 @@ namespace OexaDentalClinic.Api.Controllers
             _db.Appointments.Add(appointment);
             await _db.SaveChangesAsync();
 
+            var problems = await _scheduling.GetProblemsForKeysAsync(serviceKeys);
+            await _scheduling.CreateTreatmentLinesAsync(appointment.Id, problems, preferredDateTime.Value);
+
             await _email.SendAppointmentBookedAsync(appointment);
 
             return CreatedAtAction(nameof(GetById), new { id = appointment.Id }, appointment);
@@ -78,23 +81,31 @@ namespace OexaDentalClinic.Api.Controllers
         [HttpGet("unassigned")]
         public async Task<IActionResult> GetUnassigned()
         {
-            var appts = await _db.Appointments
-                .Where(a => a.AssignedDentistUserId == null && a.Status == "Booked")
-                .OrderBy(a => a.PreferredDateTime)
-                .ToListAsync();
+            await EnsureTreatmentLinesForOpenAppointmentsAsync();
 
-            var problems = await _db.DentalProblems.ToDictionaryAsync(p => p.Key, p => p.Name);
+            var problems = await DentalProblemLookup.NameByKeyAsync(_db);
 
-            return Ok(appts.Select(a => new
+            var rows = await (
+                from t in _db.AppointmentTreatments
+                join a in _db.Appointments on t.AppointmentId equals a.Id
+                where a.Status == "Booked" && t.AssignedDentistUserId == null
+                orderby t.ScheduledStart, a.Id
+                select new { t, a }
+            ).ToListAsync();
+
+            return Ok(rows.Select(r => new
             {
-                a.Id,
-                a.FirstName,
-                a.LastName,
-                a.Email,
-                a.PreferredDateTime,
-                ProblemKey = a.ServiceNeeded,
-                ProblemName = FormatServiceNames(a.ServiceNeeded, problems),
-                a.Status
+                appointmentId = r.a.Id,
+                treatmentLineId = r.t.Id,
+                r.a.FirstName,
+                r.a.LastName,
+                r.a.Email,
+                preferredDateTime = r.a.PreferredDateTime,
+                scheduledStart = r.t.ScheduledStart,
+                problemKey = r.t.ProblemKey,
+                problemName = problems.GetValueOrDefault(r.t.ProblemKey, r.t.ProblemKey),
+                durationMinutes = r.t.DurationMinutes,
+                r.a.Status
             }));
         }
 
@@ -113,12 +124,71 @@ namespace OexaDentalClinic.Api.Controllers
                 query = query.Where(a => a.Status == status.Trim());
 
             if (dentistId.HasValue)
-                query = query.Where(a => a.AssignedDentistUserId == dentistId.Value);
+            {
+                var did = dentistId.Value;
+                var apptIdsForDentist = await _db.AppointmentTreatments
+                    .Where(t => t.AssignedDentistUserId == did)
+                    .Select(t => t.AppointmentId)
+                    .Distinct()
+                    .ToListAsync();
+                query = query.Where(a =>
+                    a.AssignedDentistUserId == did || apptIdsForDentist.Contains(a.Id));
+            }
 
             if (unassignedOnly == true)
-                query = query.Where(a => a.AssignedDentistUserId == null);
+            {
+                var fullyAssigned = await _db.AppointmentTreatments
+                    .GroupBy(t => t.AppointmentId)
+                    .Where(g => g.All(t => t.AssignedDentistUserId != null))
+                    .Select(g => g.Key)
+                    .ToListAsync();
+                query = query.Where(a =>
+                    a.AssignedDentistUserId == null && !fullyAssigned.Contains(a.Id));
+            }
 
             var result = await query.OrderBy(a => a.PreferredDateTime).ToListAsync();
+
+            if (!string.IsNullOrWhiteSpace(email))
+            {
+                var apptIds = result.Select(a => a.Id).ToList();
+                var reviews = await _db.Reviews
+                    .Where(r => apptIds.Contains(r.AppointmentId))
+                    .ToDictionaryAsync(r => r.AppointmentId);
+                var users = await _db.Users.AsNoTracking().ToListAsync();
+                var problems = await DentalProblemLookup.NameByKeyAsync(_db);
+
+                var enriched = result.Select(a =>
+                {
+                    var keys = AppointmentSchedulingService.ParseServiceKeys(a.ServiceNeeded);
+                    var serviceNames = string.Join(", ", keys.Select(k => problems.GetValueOrDefault(k, k)));
+                    User? dentist = null;
+                    if (a.AssignedDentistUserId.HasValue)
+                        dentist = users.FirstOrDefault(u => u.Id == a.AssignedDentistUserId.Value);
+                    reviews.TryGetValue(a.Id, out var review);
+
+                    return new
+                    {
+                        a.Id,
+                        a.FirstName,
+                        a.LastName,
+                        a.Email,
+                        a.PhoneNumber,
+                        a.PreferredDateTime,
+                        a.ServiceNeeded,
+                        serviceNames,
+                        a.AdditionalNotes,
+                        a.Status,
+                        a.IsSpecialAppointment,
+                        a.AssignedDentistUserId,
+                        dentistName = dentist != null ? $"Dr. {dentist.FirstName} {dentist.LastName}" : null,
+                        hasReview = review != null,
+                        reviewRating = review?.Rating,
+                        reviewComment = review?.Comment
+                    };
+                });
+                return Ok(enriched);
+            }
+
             return Ok(result);
         }
 
@@ -181,6 +251,122 @@ namespace OexaDentalClinic.Api.Controllers
             return Ok(appt);
         }
 
+        [HttpGet("{id:int}/details")]
+        public async Task<IActionResult> GetDetails(int id)
+        {
+            var appt = await _db.Appointments.FindAsync(id);
+            if (appt == null) return NotFound();
+
+            var keys = AppointmentSchedulingService.ParseServiceKeys(appt.ServiceNeeded);
+            var allProblems = await _db.DentalProblems.AsNoTracking().ToListAsync();
+            var allPromos = await _db.Promotions
+                .Where(p => p.IsActive && p.ProblemKey != null)
+                .AsNoTracking()
+                .ToListAsync();
+            var activePromos = allPromos.Where(p => PromotionHelper.IsActiveOnDate(p)).ToList();
+
+            var treatments = new List<object>();
+            decimal estimatedBase = 0;
+            decimal estimatedTotal = 0;
+
+            foreach (var key in keys)
+            {
+                var problem = DentalProblemLookup.Find(allProblems, key);
+                if (problem == null)
+                {
+                    treatments.Add(new { key, name = key });
+                    continue;
+                }
+
+                var promo = activePromos.FirstOrDefault(x => PromotionHelper.KeysMatch(x.ProblemKey, problem.Key));
+                var discounted = promo != null
+                    ? Math.Round(problem.BasePrice * (100 - promo.DiscountPercent) / 100m, 2)
+                    : (decimal?)null;
+                var display = discounted ?? problem.BasePrice;
+                estimatedBase += problem.BasePrice;
+                estimatedTotal += display;
+
+                treatments.Add(new
+                {
+                    key = problem.Key,
+                    name = problem.Name,
+                    durationMinutes = problem.DurationMinutes,
+                    basePrice = problem.BasePrice,
+                    discountPercent = promo?.DiscountPercent,
+                    promotionTitle = promo?.Title,
+                    priceAfterDiscount = discounted,
+                    displayPrice = display
+                });
+            }
+
+            User? dentist = null;
+            if (appt.AssignedDentistUserId.HasValue)
+                dentist = await _db.Users.FindAsync(appt.AssignedDentistUserId.Value);
+
+            var receipt = await _db.Receipts.AsNoTracking()
+                .FirstOrDefaultAsync(r => r.AppointmentId == id);
+            object? receiptInfo = null;
+            if (receipt != null)
+            {
+                var meds = await _db.ReceiptMedications.AsNoTracking()
+                    .Where(m => m.ReceiptId == receipt.Id)
+                    .OrderBy(m => m.Id)
+                    .ToListAsync();
+                receiptInfo = new
+                {
+                    receipt.Id,
+                    receipt.ReceiptNumber,
+                    receipt.Status,
+                    receipt.TotalAmount,
+                    isFinalized = receipt.Status == "Finalized",
+                    medications = meds.Select(m => new { m.Id, m.Name, m.UnitPrice })
+                };
+            }
+
+            var treatmentRecord = await _db.TreatmentRecords.AsNoTracking()
+                .FirstOrDefaultAsync(t => t.AppointmentId == id);
+
+            return Ok(new
+            {
+                appointment = new
+                {
+                    appt.Id,
+                    appt.FirstName,
+                    appt.LastName,
+                    appt.Email,
+                    appt.PhoneNumber,
+                    appt.PreferredDateTime,
+                    appt.ServiceNeeded,
+                    appt.AdditionalNotes,
+                    appt.Status,
+                    appt.IsSpecialAppointment,
+                    appt.CreatedAt,
+                    appt.ReminderSent
+                },
+                treatments,
+                pricing = new
+                {
+                    estimatedBaseTotal = estimatedBase,
+                    estimatedTotal,
+                    estimatedSavings = Math.Max(0, estimatedBase - estimatedTotal)
+                },
+                assignedDentist = dentist == null
+                    ? null
+                    : new { dentist.Id, dentist.FirstName, dentist.LastName, dentist.Email },
+                treatmentRecord = treatmentRecord == null
+                    ? null
+                    : new
+                    {
+                        treatmentRecord.Diagnosis,
+                        treatmentRecord.TreatmentPerformed,
+                        treatmentRecord.Recommendations,
+                        treatmentRecord.MedicationPrescribed,
+                        treatmentRecord.UpdatedAt
+                    },
+                receipt = receiptInfo
+            });
+        }
+
         [HttpPatch("{id:int}/status")]
         public async Task<IActionResult> UpdateStatus(int id, [FromBody] UpdateAppointmentStatusDto dto)
         {
@@ -193,7 +379,15 @@ namespace OexaDentalClinic.Api.Controllers
 
             appt.Status = dto.Status;
             await _db.SaveChangesAsync();
-            await _email.SendStatusChangedAsync(appt, $"Appointment status changed to {dto.Status}.");
+
+            var statusMessage = dto.Status switch
+            {
+                "InProgress" => "You have been checked in. Your visit is now in progress.",
+                "Completed" => "Your visit has been completed. Thank you for choosing Oexa Dental Clinic.",
+                "Cancelled" => "Your appointment has been cancelled.",
+                _ => $"Appointment status changed to {dto.Status}."
+            };
+            await _email.SendStatusChangedAsync(appt, statusMessage);
             return Ok(appt);
         }
 
@@ -223,37 +417,108 @@ namespace OexaDentalClinic.Api.Controllers
                 return BadRequest(new { error = "Invalid dentist." });
 
             var keys = AppointmentSchedulingService.ParseServiceKeys(appt.ServiceNeeded);
-            var problems = await _db.DentalProblems.Where(p => keys.Contains(p.Key)).ToListAsync();
+            var allProblems = await DentalProblemLookup.LoadAllAsync(_db);
+            var problems = DentalProblemLookup.FilterByKeys(allProblems, keys);
             if (problems.Count == 0)
-                return BadRequest(new { error = "Invalid treatments on appointment." });
+                return BadRequest(new { error = "Invalid treatments on appointment. Ask admin to check treatment keys." });
+
+            var categories = problems.Select(p => p.DentistCategoryKey).Distinct().ToList();
+            if (categories.Count > 1)
+                return BadRequest(new { error = "This booking needs a different dentist per treatment. Use Assign on each treatment row." });
 
             if (problems.Any(p => p.DentistCategoryKey != dentist.DentistServiceKey))
                 return BadRequest(new { error = "This dentist does not handle all selected treatments." });
 
-            var duration = problems.Sum(p => p.DurationMinutes);
+            await EnsureTreatmentLinesAsync(appt);
+            var lines = await _db.AppointmentTreatments.Where(t => t.AppointmentId == id).ToListAsync();
             var start = appt.PreferredDateTime;
-            var end = start.AddMinutes(duration);
-            var allProblems = await _db.DentalProblems.ToDictionaryAsync(p => p.Key, p => p.DurationMinutes);
 
-            var otherAppts = await _db.Appointments
-                .Where(a => a.Id != id && a.Status != "Cancelled" && a.AssignedDentistUserId == dentist.Id)
-                .Where(a => a.PreferredDateTime.Date == start.Date)
-                .ToListAsync();
-
-            foreach (var other in otherAppts)
+            foreach (var line in lines)
             {
-                var otherKeys = AppointmentSchedulingService.ParseServiceKeys(other.ServiceNeeded);
-                var otherDuration = otherKeys.Where(allProblems.ContainsKey).Sum(k => allProblems[k]);
-                if (otherDuration <= 0) otherDuration = 60;
-                var otherEnd = other.PreferredDateTime.AddMinutes(otherDuration);
-                if (start < otherEnd && other.PreferredDateTime < end)
+                if (!await _scheduling.IsDentistAvailableForLineAsync(
+                        dentist.Id, start, line.DurationMinutes, id, line.Id))
                     return BadRequest(new { error = "Dentist is not available at this time." });
+
+                line.AssignedDentistUserId = dentist.Id;
+                line.ScheduledStart = start;
             }
 
             appt.AssignedDentistUserId = dentist.Id;
             await _db.SaveChangesAsync();
             await _email.SendAppointmentAssignedAsync(appt, dentist);
             return Ok(appt);
+        }
+
+        [HttpPatch("{id:int}/assign-treatment")]
+        public async Task<IActionResult> AssignTreatment(int id, [FromBody] AssignTreatmentDto dto)
+        {
+            var appt = await _db.Appointments.FindAsync(id);
+            if (appt == null) return NotFound();
+
+            if (appt.Status != "Booked")
+                return BadRequest(new { error = "Can only assign dentists to booked appointments." });
+
+            var dentist = await _db.Users.FindAsync(dto.DentistUserId);
+            if (dentist == null || dentist.Role != "Dentist")
+                return BadRequest(new { error = "Invalid dentist." });
+
+            await EnsureTreatmentLinesAsync(appt);
+            var lines = await _db.AppointmentTreatments.Where(t => t.AppointmentId == id).ToListAsync();
+            var problemKey = dto.ProblemKey.Trim();
+            var line = lines.FirstOrDefault(t =>
+                string.Equals(t.ProblemKey, problemKey, StringComparison.OrdinalIgnoreCase));
+            if (line == null)
+                return BadRequest(new { error = "Treatment not found on this appointment." });
+
+            var allProblems = await DentalProblemLookup.LoadAllAsync(_db);
+            var problem = DentalProblemLookup.Find(allProblems, line.ProblemKey);
+            if (problem == null)
+                return BadRequest(new { error = "Invalid treatment." });
+
+            if (problem.DentistCategoryKey != dentist.DentistServiceKey)
+                return BadRequest(new { error = "This dentist does not perform this treatment." });
+
+            var start = line.ScheduledStart;
+            if (!string.IsNullOrWhiteSpace(dto.PreferredDate) && !string.IsNullOrWhiteSpace(dto.PreferredTime))
+            {
+                var parsed = ParseDateTime(dto.PreferredDate.Trim(), dto.PreferredTime.Trim());
+                if (parsed == null)
+                    return BadRequest(new { error = "Invalid date or time for this treatment." });
+                if (parsed.Value < DateTime.Now)
+                    return BadRequest(new { error = "Cannot schedule in the past." });
+                start = parsed.Value;
+                line.ScheduledStart = start;
+            }
+
+            if (!await _scheduling.IsDentistAvailableForLineAsync(
+                    dentist.Id, start, line.DurationMinutes, id, line.Id))
+            {
+                return BadRequest(new
+                {
+                    error = "Dentist is busy at this time. Choose another time for this treatment only.",
+                    needsReschedule = true,
+                    problemKey = line.ProblemKey
+                });
+            }
+
+            line.AssignedDentistUserId = dentist.Id;
+            await SyncAppointmentHeaderAsync(appt, lines);
+            await _db.SaveChangesAsync();
+
+            var allAssigned = lines.All(t => t.AssignedDentistUserId != null);
+            if (allAssigned)
+                await _email.SendAppointmentAssignedAsync(appt, dentist);
+            else
+                await _email.SendTreatmentLineAssignedAsync(appt, line, dentist, problem.Name);
+
+            return Ok(new
+            {
+                appointmentId = id,
+                line.ProblemKey,
+                line.AssignedDentistUserId,
+                line.ScheduledStart,
+                allTreatmentsAssigned = allAssigned
+            });
         }
 
         [HttpPut("{id:int}/reschedule")]
@@ -273,11 +538,71 @@ namespace OexaDentalClinic.Api.Controllers
             if (!await _scheduling.IsSlotAvailableAsync(serviceKeys, preferredDateTime.Value, id))
                 return BadRequest(new { error = "Selected time slot is not available." });
 
+            var previousDateTime = appt.PreferredDateTime;
             appt.PreferredDateTime = preferredDateTime.Value;
             appt.ServiceNeeded = string.Join(",", serviceKeys);
             appt.Status = "Booked";
+
+            var treatmentLines = await _db.AppointmentTreatments.Where(t => t.AppointmentId == id).ToListAsync();
+            foreach (var line in treatmentLines)
+                line.ScheduledStart = preferredDateTime.Value;
+
             await _db.SaveChangesAsync();
+            await _email.SendAppointmentRescheduledAsync(appt, previousDateTime);
             return Ok(appt);
+        }
+
+        private async Task EnsureTreatmentLinesForOpenAppointmentsAsync()
+        {
+            var open = await _db.Appointments
+                .Where(a => a.Status == "Booked")
+                .ToListAsync();
+            foreach (var appt in open)
+                await EnsureTreatmentLinesAsync(appt);
+        }
+
+        private async Task EnsureTreatmentLinesAsync(Appointment appt)
+        {
+            if (await _db.AppointmentTreatments.AnyAsync(t => t.AppointmentId == appt.Id))
+                return;
+
+            var keys = AppointmentSchedulingService.ParseServiceKeys(appt.ServiceNeeded);
+            var allProblems = await DentalProblemLookup.LoadAllAsync(_db);
+            foreach (var key in keys)
+            {
+                var problem = DentalProblemLookup.Find(allProblems, key);
+                var duration = problem?.DurationMinutes > 0 ? problem!.DurationMinutes : 60;
+                _db.AppointmentTreatments.Add(new AppointmentTreatment
+                {
+                    AppointmentId = appt.Id,
+                    ProblemKey = problem?.Key ?? key,
+                    ScheduledStart = appt.PreferredDateTime,
+                    DurationMinutes = duration,
+                    AssignedDentistUserId = keys.Count == 1 ? appt.AssignedDentistUserId : null
+                });
+            }
+
+            await _db.SaveChangesAsync();
+        }
+
+        private async Task SyncAppointmentHeaderAsync(Appointment appt, List<AppointmentTreatment> lines)
+        {
+            if (lines.Count == 0)
+                lines = await _db.AppointmentTreatments.Where(t => t.AppointmentId == appt.Id).ToListAsync();
+
+            var assigned = lines.Where(t => t.AssignedDentistUserId != null).Select(t => t.AssignedDentistUserId!.Value).Distinct().ToList();
+            if (assigned.Count == 1)
+                appt.AssignedDentistUserId = assigned[0];
+            else if (assigned.Count == 0)
+                appt.AssignedDentistUserId = null;
+            else
+                appt.AssignedDentistUserId = null;
+
+            if (lines.Count > 0)
+            {
+                var earliest = lines.Min(t => t.ScheduledStart);
+                appt.PreferredDateTime = earliest;
+            }
         }
 
         private static string FormatServiceNames(string serviceNeeded, Dictionary<string, string> problems)

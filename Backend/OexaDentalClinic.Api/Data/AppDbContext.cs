@@ -15,5 +15,6 @@ namespace OexaDentalClinic.Api.Data
         public DbSet<ReceiptMedication> ReceiptMedications => Set<ReceiptMedication>();
         public DbSet<TreatmentRecord> TreatmentRecords => Set<TreatmentRecord>();
         public DbSet<DentalProblem> DentalProblems => Set<DentalProblem>();
+        public DbSet<AppointmentTreatment> AppointmentTreatments => Set<AppointmentTreatment>();
     }
 }

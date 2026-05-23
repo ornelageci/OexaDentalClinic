@@ -1,0 +1,40 @@
+#oexa-loading-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 10050;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.55);
+    pointer-events: all;
+}
+
+#oexa-loading-overlay.is-active {
+    display: flex;
+}
+
+.oexa-loading-spinner {
+    width: 52px;
+    height: 52px;
+    border: 4px solid rgba(30, 58, 138, 0.18);
+    border-top-color: #3b82f6;
+    border-radius: 50%;
+    animation: oexa-loading-spin 0.75s linear infinite;
+}
+
+@keyframes oexa-loading-spin {
+    to { transform: rotate(360deg); }
+}
+
+body.oexa-loading-active {
+    overflow-y: auto;
+}
+
+body.oexa-loading-active button,
+body.oexa-loading-active a,
+body.oexa-loading-active input,
+body.oexa-loading-active select,
+body.oexa-loading-active textarea,
+body.oexa-loading-active label[for] {
+    pointer-events: none;
+}

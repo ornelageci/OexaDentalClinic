@@ -155,7 +155,7 @@ document.addEventListener('DOMContentLoaded', function() {
         try {
             var services = keys.join(',');
             var url = '/api/Appointments/time-slots?date=' + encodeURIComponent(date) + '&services=' + encodeURIComponent(services);
-            var slots = await apiGet(url);
+            var slots = await apiGet(url, { loading: true });
 
             if (!slots || !slots.length) {
                 preferredTime.innerHTML = '<option value="">No slots available</option>';
@@ -224,7 +224,7 @@ document.addEventListener('DOMContentLoaded', function() {
         var dateFormatted = date.split('-').reverse().join('.');
 
         try {
-            var check = await apiGet('/api/Appointments/availability?service=' + encodeURIComponent(keys.join(',')) + '&date=' + encodeURIComponent(dateFormatted) + '&time=' + time);
+            var check = await apiGet('/api/Appointments/availability?service=' + encodeURIComponent(keys.join(',')) + '&date=' + encodeURIComponent(dateFormatted) + '&time=' + time, { loading: true });
             var available = pick(check, 'available', 'Available');
             if (!available) {
                 alert('This time slot is no longer available. Please choose another time.');

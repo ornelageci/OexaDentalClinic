@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using OexaDentalClinic.Api.Data;
 using OexaDentalClinic.Api.DTOs;
 using OexaDentalClinic.Api.Models;
+using OexaDentalClinic.Api.Services;
 
 namespace OexaDentalClinic.Api.Controllers
 {
@@ -86,9 +87,18 @@ namespace OexaDentalClinic.Api.Controllers
 
             if (!string.IsNullOrWhiteSpace(problemKey))
             {
-                var problem = await _db.DentalProblems.FirstOrDefaultAsync(p => p.Key == problemKey.Trim());
-                if (problem != null)
-                    query = query.Where(u => u.DentistServiceKey == problem.DentistCategoryKey);
+                var keys = AppointmentSchedulingService.ParseServiceKeys(problemKey);
+                var allProblems = await DentalProblemLookup.LoadAllAsync(_db);
+                var matched = DentalProblemLookup.FilterByKeys(allProblems, keys);
+
+                if (matched.Count > 0)
+                {
+                    var categories = matched.Select(p => p.DentistCategoryKey).Distinct().ToList();
+                    if (categories.Count == 1)
+                        query = query.Where(u => u.DentistServiceKey == categories[0]);
+                    else
+                        return Ok(Array.Empty<object>()); // mixed categories — no single dentist
+                }
             }
 
             var dentists = await query

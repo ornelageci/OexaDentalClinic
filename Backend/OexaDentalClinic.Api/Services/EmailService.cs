@@ -24,53 +24,149 @@ namespace OexaDentalClinic.Api.Services
 
         public async Task SendAppointmentBookedAsync(Appointment appointment)
         {
-            var problem = await ProblemName(appointment.ServiceNeeded);
+            var problem = await FormatServiceNames(appointment.ServiceNeeded);
             await SendToAllPartiesAsync(appointment, null,
                 "Appointment request received - Oexa Dental Clinic",
-                $"A new appointment was booked.\nProblem: {problem}\nDentist will be assigned by reception.");
+                $"A new appointment was booked.\nTreatments: {problem}\nDentist will be assigned by reception.");
         }
 
-        public Task SendAppointmentAssignedAsync(Appointment appointment, User dentist) =>
-            SendToAllPartiesAsync(appointment, dentist,
-                "Dentist assigned - Oexa Dental Clinic",
-                $"Your appointment now has an assigned dentist: Dr. {dentist.FirstName} {dentist.LastName}.");
-
-        public Task SendAppointmentCancelledAsync(Appointment appointment) =>
-            SendToAllPartiesAsync(appointment, null,
-                "Appointment cancelled - Oexa Dental Clinic",
-                "The appointment has been cancelled.");
-
-        public Task SendAppointmentReminderAsync(Appointment appointment) =>
-            SendToAllPartiesAsync(appointment, null,
-                "Appointment reminder - Oexa Dental Clinic",
-                "Reminder: you have an upcoming dental visit.");
-
-        public Task SendReceiptFinalizedAsync(Appointment appointment, Receipt receipt, IEnumerable<ReceiptMedication> medications)
+        public async Task SendAppointmentAssignedAsync(Appointment appointment, User dentist)
         {
-            var medLines = string.Join("\n", medications.Select(m => $"- {m.Name}: {m.UnitPrice:C}"));
-            return SendToAllPartiesAsync(appointment, null,
-                "Receipt finalized - Oexa Dental Clinic",
-                $"Receipt {receipt.ReceiptNumber}\nTotal: {receipt.TotalAmount:C}\n\nMedications:\n{medLines}");
+            var (appt, resolved) = await ResolveAppointmentContextAsync(appointment, dentist);
+            var d = resolved ?? dentist;
+            var lines = await GetAssignedTreatmentLinesAsync(appt.Id);
+            var distinctDentists = lines.Select(l => l.DentistId).Distinct().Count();
+
+            string body;
+            if (distinctDentists > 1)
+            {
+                var schedule = await FormatTreatmentScheduleAsync(appt.Id);
+                body = "All treatments for your visit are now assigned:\n" + schedule;
+                await SendToAllPartiesAsync(appt, null,
+                    "Dentists assigned - Oexa Dental Clinic", body);
+                return;
+            }
+
+            body = d != null
+                ? $"Your appointment now has an assigned dentist: Dr. {d.FirstName} {d.LastName}."
+                : "Your appointment dentists have been assigned.";
+            await SendToAllPartiesAsync(appt, d,
+                "Dentist assigned - Oexa Dental Clinic", body);
         }
 
-        public Task SendStatusChangedAsync(Appointment appointment, string message) =>
-            SendToAllPartiesAsync(appointment, null,
+        public async Task SendTreatmentLineAssignedAsync(Appointment appointment, AppointmentTreatment line, User dentist, string treatmentName)
+        {
+            var (appt, _) = await ResolveAppointmentContextAsync(appointment, dentist);
+            await SendToAllPartiesAsync(appt, dentist,
+                "Treatment assigned - Oexa Dental Clinic",
+                $"Dr. {dentist.FirstName} {dentist.LastName} was assigned for {treatmentName} at {line.ScheduledStart:g}. Other treatments may still need assignment.");
+        }
+
+        public async Task SendAppointmentCancelledAsync(Appointment appointment)
+        {
+            var (appt, dentist) = await ResolveAppointmentContextAsync(appointment, null);
+            await SendToAllPartiesAsync(appt, dentist,
+                "Appointment cancelled - Oexa Dental Clinic",
+                AppendDentistToMessage("The appointment has been cancelled.", dentist));
+        }
+
+        public async Task SendAppointmentReminderAsync(Appointment appointment)
+        {
+            var (appt, dentist) = await ResolveAppointmentContextAsync(appointment, null);
+            await SendToAllPartiesAsync(appt, dentist,
+                "Appointment reminder - Oexa Dental Clinic",
+                AppendDentistToMessage("Reminder: you have an upcoming dental visit.", dentist));
+        }
+
+        public async Task SendReceiptFinalizedAsync(Appointment appointment, Receipt receipt, IEnumerable<ReceiptMedication> medications)
+        {
+            var (appt, dentist) = await ResolveAppointmentContextAsync(appointment, null);
+            var medLines = string.Join("\n", medications.Select(m => $"- {m.Name}: {m.UnitPrice:C}"));
+            await SendToAllPartiesAsync(appt, dentist,
+                "Receipt finalized - Oexa Dental Clinic",
+                AppendDentistToMessage(
+                    $"Receipt {receipt.ReceiptNumber}\nTotal: {receipt.TotalAmount:C}\n\nMedications:\n{medLines}",
+                    dentist));
+        }
+
+        public async Task SendStatusChangedAsync(Appointment appointment, string message)
+        {
+            var (appt, dentist) = await ResolveAppointmentContextAsync(appointment, null);
+            await SendToAllPartiesAsync(appt, dentist,
                 "Appointment update - Oexa Dental Clinic",
-                message);
+                AppendDentistToMessage(message, dentist));
+        }
+
+        public async Task SendAppointmentRescheduledAsync(Appointment appointment, DateTime previousDateTime)
+        {
+            var (appt, dentist) = await ResolveAppointmentContextAsync(appointment, null);
+            await SendToAllPartiesAsync(appt, dentist,
+                "Appointment rescheduled - Oexa Dental Clinic",
+                AppendDentistToMessage(
+                    $"Your appointment was rescheduled.\nPrevious time: {previousDateTime:g}\nNew time: {appt.PreferredDateTime:g}",
+                    dentist));
+        }
+
+        public async Task SendReceiptPendingPricingAsync(Appointment appointment, Receipt receipt)
+        {
+            var (appt, dentist) = await ResolveAppointmentContextAsync(appointment, null);
+            await SendToAllPartiesAsync(appt, dentist,
+                "Receipt ready for pricing - Oexa Dental Clinic",
+                AppendDentistToMessage(
+                    $"Dentist submitted medications for appointment #{appt.Id}. Receipt {receipt.ReceiptNumber} is waiting for manager pricing.",
+                    dentist));
+        }
+
+        public async Task SendReviewSubmittedAsync(Appointment appointment, Review review)
+        {
+            var (appt, dentist) = await ResolveAppointmentContextAsync(appointment, null);
+            var treatments = await FormatServiceNames(appt.ServiceNeeded);
+            var dentistName = dentist != null ? $"Dr. {dentist.FirstName} {dentist.LastName}" : "Not assigned";
+            var comment = string.IsNullOrWhiteSpace(review.Comment) ? "(no comment)" : review.Comment.Trim();
+
+            var body = $"""
+                A patient submitted a new review.
+
+                Rating: {review.Rating}/5
+                Message:
+                {comment}
+
+                Appointment #{appt.Id}
+                Patient: {appt.FirstName} {appt.LastName}
+                Email: {appt.Email}
+                Phone: {appt.PhoneNumber}
+                Date & time: {appt.PreferredDateTime:g}
+                Treatments: {treatments}
+                Dentist: {dentistName}
+
+                Oexa Dental Clinic
+                """;
+
+            var clinicEmail = string.IsNullOrWhiteSpace(_settings.ClinicNotificationEmail)
+                ? _settings.FromAddress
+                : _settings.ClinicNotificationEmail.Trim();
+
+            await SendAsync(new[] { clinicEmail }, "New patient review - Oexa Dental Clinic", body);
+        }
 
         private async Task SendToAllPartiesAsync(Appointment appointment, User? dentist, string subject, string bodyText)
         {
-            var problem = await ProblemName(appointment.ServiceNeeded);
-            var dentistLine = dentist != null ? $"Dentist: Dr. {dentist.FirstName} {dentist.LastName}\n" : "Dentist: To be assigned\n";
+            var (appt, resolvedDentist) = await ResolveAppointmentContextAsync(appointment, dentist);
+            dentist = resolvedDentist;
+
+            var problem = await FormatServiceNames(appt.ServiceNeeded);
+            var dentistLine = dentist != null
+                ? FormatDentistLine(dentist)
+                : await FormatDentistLineFromLinesAsync(appt.Id);
 
             var text = $"""
                 {bodyText}
 
-                Patient: {appointment.FirstName} {appointment.LastName}
-                Email: {appointment.Email}
-                Problem: {problem}
-                {dentistLine}Date & time: {appointment.PreferredDateTime:g}
-                Status: {appointment.Status}
+                Patient: {appt.FirstName} {appt.LastName}
+                Email: {appt.Email}
+                Treatments: {problem}
+                {dentistLine}Date & time: {appt.PreferredDateTime:g}
+                Status: {appt.Status}
 
                 Oexa Dental Clinic
                 Tirane Delijorgji | WhatsApp: +355 69 68 67 665
@@ -78,13 +174,20 @@ namespace OexaDentalClinic.Api.Services
 
             var recipients = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             {
-                appointment.Email.Trim()
+                appt.Email.Trim()
             };
+
+            var lineDentistIds = await _db.AppointmentTreatments
+                .Where(t => t.AppointmentId == appt.Id && t.AssignedDentistUserId != null)
+                .Select(t => t.AssignedDentistUserId!.Value)
+                .Distinct()
+                .ToListAsync();
 
             var staff = await _db.Users
                 .Where(u => u.Role == "Admin" || u.Role == "Manager" ||
                     (dentist != null && u.Id == dentist.Id) ||
-                    (appointment.AssignedDentistUserId != null && u.Id == appointment.AssignedDentistUserId))
+                    (appt.AssignedDentistUserId != null && u.Id == appt.AssignedDentistUserId) ||
+                    lineDentistIds.Contains(u.Id))
                 .Select(u => u.Email)
                 .ToListAsync();
 
@@ -97,15 +200,112 @@ namespace OexaDentalClinic.Api.Services
             await SendAsync(recipients, subject, text);
         }
 
-        private async Task<string> ProblemName(string key)
+        /// <summary>Reload appointment and resolve assigned dentist from the database.</summary>
+        private async Task<(Appointment appt, User? dentist)> ResolveAppointmentContextAsync(Appointment appointment, User? dentist)
         {
-            var p = await _db.DentalProblems.FirstOrDefaultAsync(x => x.Key == key);
-            return p?.Name ?? key;
+            var appt = await _db.Appointments.AsNoTracking()
+                .FirstOrDefaultAsync(a => a.Id == appointment.Id) ?? appointment;
+
+            if (dentist == null && appt.AssignedDentistUserId.HasValue)
+            {
+                dentist = await _db.Users.AsNoTracking()
+                    .FirstOrDefaultAsync(u => u.Id == appt.AssignedDentistUserId.Value && u.Role == "Dentist");
+            }
+
+            if (dentist == null)
+            {
+                var lines = await GetAssignedTreatmentLinesAsync(appt.Id);
+                if (lines.Count == 1)
+                {
+                    dentist = await _db.Users.AsNoTracking()
+                        .FirstOrDefaultAsync(u => u.Id == lines[0].DentistId && u.Role == "Dentist");
+                }
+            }
+
+            return (appt, dentist);
+        }
+
+        private async Task<List<AssignedTreatmentLine>> GetAssignedTreatmentLinesAsync(int appointmentId)
+        {
+            return await _db.AppointmentTreatments.AsNoTracking()
+                .Where(t => t.AppointmentId == appointmentId && t.AssignedDentistUserId != null)
+                .Select(t => new AssignedTreatmentLine
+                {
+                    DentistId = t.AssignedDentistUserId!.Value,
+                    ProblemKey = t.ProblemKey,
+                    ScheduledStart = t.ScheduledStart
+                })
+                .ToListAsync();
+        }
+
+        private sealed class AssignedTreatmentLine
+        {
+            public int DentistId { get; set; }
+            public string ProblemKey { get; set; } = "";
+            public DateTime ScheduledStart { get; set; }
+        }
+
+        private async Task<string> FormatDentistLineFromLinesAsync(int appointmentId)
+        {
+            var lines = await GetAssignedTreatmentLinesAsync(appointmentId);
+            if (lines.Count == 0)
+                return "Dentist: To be assigned\n";
+
+            if (lines.Select(l => l.DentistId).Distinct().Count() == 1)
+            {
+                var d = await _db.Users.AsNoTracking()
+                    .FirstOrDefaultAsync(u => u.Id == lines[0].DentistId);
+                return FormatDentistLine(d);
+            }
+
+            return "Dentists:\n" + await FormatTreatmentScheduleAsync(appointmentId) + "\n";
+        }
+
+        private async Task<string> FormatTreatmentScheduleAsync(int appointmentId)
+        {
+            var lines = await _db.AppointmentTreatments.AsNoTracking()
+                .Where(t => t.AppointmentId == appointmentId && t.AssignedDentistUserId != null)
+                .ToListAsync();
+            var users = await _db.Users.AsNoTracking().Where(u => u.Role == "Dentist").ToDictionaryAsync(u => u.Id);
+            var names = await DentalProblemLookup.NameByKeyAsync(_db);
+
+            return string.Join("\n", lines.Select(l =>
+            {
+                users.TryGetValue(l.AssignedDentistUserId!.Value, out var d);
+                var treatment = names.GetValueOrDefault(l.ProblemKey, l.ProblemKey);
+                var dr = d != null ? $"Dr. {d.FirstName} {d.LastName}" : "Dentist";
+                return $"- {treatment}: {dr} at {l.ScheduledStart:g}";
+            }));
+        }
+
+        private static string FormatDentistLine(User? dentist) =>
+            dentist != null
+                ? $"Dentist: Dr. {dentist.FirstName} {dentist.LastName}\n"
+                : "Dentist: To be assigned\n";
+
+        private static string AppendDentistToMessage(string message, User? dentist)
+        {
+            if (dentist == null) return message;
+            var name = $"Dr. {dentist.FirstName} {dentist.LastName}";
+            if (message.Contains(name, StringComparison.OrdinalIgnoreCase))
+                return message;
+            return message + $"\n\nYour dentist: {name}.";
+        }
+
+        private async Task<string> FormatServiceNames(string serviceNeeded)
+        {
+            var keys = AppointmentSchedulingService.ParseServiceKeys(serviceNeeded);
+            if (keys.Count == 0) return serviceNeeded;
+
+            var nameByKey = (await _db.DentalProblems.AsNoTracking().ToListAsync())
+                .ToDictionary(p => p.Key, p => p.Name, StringComparer.OrdinalIgnoreCase);
+
+            return string.Join(", ", keys.Select(k => nameByKey.GetValueOrDefault(k, k)));
         }
 
         private async Task SendAsync(IEnumerable<string> toAddresses, string subject, string textBody)
         {
-            var list = toAddresses.Where(e => !string.IsNullOrWhiteSpace(e)).Distinct().ToList();
+            var list = toAddresses.Where(e => !string.IsNullOrWhiteSpace(e)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
             if (list.Count == 0) return;
 
             if (!_settings.Enabled || string.IsNullOrWhiteSpace(_settings.SmtpPassword))
@@ -115,10 +315,21 @@ namespace OexaDentalClinic.Api.Services
                 return;
             }
 
+            var sent = 0;
+            foreach (var to in list)
+            {
+                if (await TrySendOneAsync(to, subject, textBody))
+                    sent++;
+            }
+
+            _logger.LogInformation("Email {Subject}: sent {Sent}/{Total}", subject, sent, list.Count);
+        }
+
+        private async Task<bool> TrySendOneAsync(string to, string subject, string textBody)
+        {
             var message = new MimeMessage();
             message.From.Add(new MailboxAddress(_settings.FromName, _settings.FromAddress));
-            foreach (var to in list)
-                message.To.Add(MailboxAddress.Parse(to));
+            message.To.Add(MailboxAddress.Parse(to));
             message.Subject = subject;
             message.Body = new TextPart("plain") { Text = textBody };
 
@@ -129,11 +340,12 @@ namespace OexaDentalClinic.Api.Services
                 await client.AuthenticateAsync(_settings.SmtpUser, _settings.SmtpPassword);
                 await client.SendAsync(message);
                 await client.DisconnectAsync(true);
-                _logger.LogInformation("Email sent: {Subject} -> {Recipients}", subject, string.Join(", ", list));
+                return true;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to send email: {Subject} -> {Recipients}", subject, string.Join(", ", list));
+                _logger.LogError(ex, "Failed to send email: {Subject} -> {Recipient}", subject, to);
+                return false;
             }
         }
     }

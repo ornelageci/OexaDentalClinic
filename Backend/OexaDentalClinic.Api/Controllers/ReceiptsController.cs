@@ -84,6 +84,8 @@ namespace OexaDentalClinic.Api.Controllers
             receipt.Status = "PendingPricing";
             await _db.SaveChangesAsync();
 
+            await _email.SendReceiptPendingPricingAsync(appt, receipt);
+
             return Ok(new { receipt.Id, receipt.ReceiptNumber, receipt.Status });
         }
 

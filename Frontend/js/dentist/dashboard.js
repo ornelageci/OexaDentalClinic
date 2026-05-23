@@ -29,6 +29,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     actions += '<button class="btn btn-sm btn-outline-secondary" data-receipt="' + a.id + '">Receipt</button>';
                 }
                 actions += '<button class="btn btn-sm btn-outline-secondary ms-1" data-open="' + a.id + '">Treatment</button>';
+                actions += '<button class="btn btn-sm btn-outline-info ms-1" data-info="' + a.id + '">Info</button>';
                 return '<tr><td>' + a.id + '</td><td>' + a.firstName + ' ' + a.lastName + '</td><td>' + formatDateTime(a.preferredDateTime) + '</td><td>' + statusBadge(a.status) + '</td><td>' + actions + '</td></tr>';
             }).join('');
 
@@ -54,6 +55,11 @@ document.addEventListener('DOMContentLoaded', function() {
             body.querySelectorAll('[data-open]').forEach(function(btn) {
                 btn.addEventListener('click', function() {
                     document.getElementById('treatmentApptId').value = btn.getAttribute('data-open');
+                });
+            });
+            body.querySelectorAll('[data-info]').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    showAppointmentInfo(btn.getAttribute('data-info'), 'dentist');
                 });
             });
         });
