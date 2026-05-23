@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using OexaDentalClinic.Api.Data;
 using OexaDentalClinic.Api.DTOs;
 using OexaDentalClinic.Api.Models;
+using OexaDentalClinic.Api.Services;
 
 namespace OexaDentalClinic.Api.Controllers
 {
@@ -43,21 +44,22 @@ namespace OexaDentalClinic.Api.Controllers
         [HttpGet("active")]
         public async Task<IActionResult> GetActive()
         {
-            var today = DateTime.Today;
-            var items = await _db.Promotions
-                .Where(p => p.IsActive && p.StartDate.Date <= today && p.EndDate.Date >= today)
+            var all = await _db.Promotions
+                .Where(p => p.IsActive && p.ProblemKey != null)
                 .OrderByDescending(p => p.DiscountPercent)
                 .ToListAsync();
 
-            var problems = await _db.DentalProblems.ToDictionaryAsync(p => p.Key, p => p);
+            var items = all.Where(p => PromotionHelper.IsActiveOnDate(p)).ToList();
+            var problems = await _db.DentalProblems.ToListAsync();
 
             var result = items.Select(p =>
             {
+                var prob = problems.FirstOrDefault(x => PromotionHelper.KeysMatch(p.ProblemKey, x.Key));
                 decimal? basePrice = null;
                 decimal? priceAfter = null;
                 string? treatmentName = null;
 
-                if (!string.IsNullOrEmpty(p.ProblemKey) && problems.TryGetValue(p.ProblemKey, out var prob))
+                if (prob != null)
                 {
                     treatmentName = prob.Name;
                     basePrice = prob.BasePrice;
@@ -75,7 +77,8 @@ namespace OexaDentalClinic.Api.Controllers
                     p.ProblemKey,
                     TreatmentName = treatmentName,
                     BasePrice = basePrice,
-                    PriceAfterDiscount = priceAfter
+                    PriceAfterDiscount = priceAfter,
+                    IsCurrentlyActive = true
                 };
             });
 
@@ -87,8 +90,17 @@ namespace OexaDentalClinic.Api.Controllers
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
 
+            if (string.IsNullOrWhiteSpace(dto.StartDate) || string.IsNullOrWhiteSpace(dto.EndDate))
+                return BadRequest(new { error = "Start date and end date are required." });
+
             if (!DateTime.TryParse(dto.StartDate, out var start) || !DateTime.TryParse(dto.EndDate, out var end))
                 return BadRequest(new { error = "Invalid date format." });
+
+            start = PromotionHelper.NormalizeDate(start);
+            end = PromotionHelper.NormalizeDate(end);
+
+            if (end < start)
+                return BadRequest(new { error = "End date must be on or after start date." });
 
             if (string.IsNullOrWhiteSpace(dto.ProblemKey))
                 return BadRequest(new { error = "Select a treatment to apply this discount to." });

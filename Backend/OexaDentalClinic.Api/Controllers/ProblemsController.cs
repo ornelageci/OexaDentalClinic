@@ -28,15 +28,15 @@ namespace OexaDentalClinic.Api.Controllers
         [HttpGet]
         public async Task<IActionResult> GetAll()
         {
-            var today = DateTime.Today;
             var problems = await _db.DentalProblems.OrderBy(p => p.Name).ToListAsync();
-            var promos = await _db.Promotions
-                .Where(p => p.IsActive && p.ProblemKey != null && p.StartDate.Date <= today && p.EndDate.Date >= today)
+            var allPromos = await _db.Promotions
+                .Where(p => p.IsActive && p.ProblemKey != null)
                 .ToListAsync();
+            var promos = allPromos.Where(p => PromotionHelper.IsActiveOnDate(p)).ToList();
 
             var result = problems.Select(p =>
             {
-                var promo = promos.FirstOrDefault(x => x.ProblemKey == p.Key);
+                var promo = promos.FirstOrDefault(x => PromotionHelper.KeysMatch(x.ProblemKey, p.Key));
                 var discounted = promo != null
                     ? Math.Round(p.BasePrice * (100 - promo.DiscountPercent) / 100m, 2)
                     : (decimal?)null;

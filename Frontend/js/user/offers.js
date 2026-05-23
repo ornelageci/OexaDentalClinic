@@ -12,9 +12,9 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        list.innerHTML = items.map(function(p, i) {
+        list.innerHTML = items.map(function(p) {
             var title = pick(p, 'title', 'Title');
-            var desc = pick(p, 'description', 'Description') || '';
+            var desc = pick(p, 'description', 'Description') || 'Book this treatment online — discount applied automatically.';
             var discount = pick(p, 'discountPercent', 'DiscountPercent');
             var endDate = pick(p, 'endDate', 'EndDate');
             var treatmentName = pick(p, 'treatmentName', 'TreatmentName');
@@ -26,6 +26,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 ? '<div class="offer-prices"><span class="offer-was">' + basePrice + ' EUR</span><span class="offer-now">' + priceAfter + ' EUR</span></div>'
                 : '';
 
+            var untilText = endDate
+                ? 'Valid until ' + new Date(endDate).toLocaleDateString()
+                : 'Limited time offer';
+
             return (
                 '<div class="col-md-6 col-lg-4 mb-4">' +
                     '<article class="offer-card is-visible">' +
@@ -34,7 +38,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         '<p class="offer-desc">' + desc + '</p>' +
                         (treatmentName ? '<p class="offer-treatment"><i class="bi bi-heart-pulse"></i> ' + treatmentName + '</p>' : '') +
                         priceBlock +
-                        '<p class="offer-until"><i class="bi bi-calendar-event"></i> Valid until ' + new Date(endDate).toLocaleDateString() + '</p>' +
+                        '<p class="offer-until"><i class="bi bi-calendar-event"></i> ' + untilText + '</p>' +
                         '<a href="book-appointment.html" class="btn btn-primary btn-sm mt-2">Book with offer</a>' +
                     '</article>' +
                 '</div>'
@@ -42,35 +46,43 @@ document.addEventListener('DOMContentLoaded', function() {
         }).join('');
     }
 
+    /** Same source as booking page — guarantees offers match checkout prices. */
     function loadFromProblems() {
         return apiGet('/api/Problems').then(function(problems) {
-            var promos = problems.filter(function(p) {
-                return pick(p, 'hasPromotion', 'HasPromotion');
-            }).map(function(p) {
-                return {
-                    title: pick(p, 'promotionTitle', 'PromotionTitle') || (pick(p, 'name', 'Name') + ' offer'),
-                    description: 'Book this treatment and save automatically at checkout.',
-                    discountPercent: pick(p, 'discountPercent', 'DiscountPercent'),
-                    endDate: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString(),
-                    treatmentName: pick(p, 'name', 'Name'),
-                    basePrice: pick(p, 'basePrice', 'BasePrice'),
-                    priceAfterDiscount: pick(p, 'priceAfterDiscount', 'PriceAfterDiscount')
-                };
-            });
-            renderOffers(promos);
+            var items = problems
+                .filter(function(p) { return pick(p, 'hasPromotion', 'HasPromotion'); })
+                .map(function(p) {
+                    return {
+                        title: pick(p, 'promotionTitle', 'PromotionTitle') || (pick(p, 'name', 'Name') + ' — special offer'),
+                        description: pick(p, 'description', 'Description') || 'Discount applied when you book this treatment.',
+                        discountPercent: pick(p, 'discountPercent', 'DiscountPercent'),
+                        treatmentName: pick(p, 'name', 'Name'),
+                        basePrice: pick(p, 'basePrice', 'BasePrice'),
+                        priceAfterDiscount: pick(p, 'priceAfterDiscount', 'PriceAfterDiscount'),
+                        endDate: null
+                    };
+                });
+            renderOffers(items);
+            return items.length;
         });
     }
 
-    apiGet('/api/Promotions/active')
-        .then(function(items) {
+    function loadFromPromotionsApi() {
+        return apiGet('/api/Promotions/active').then(function(items) {
             if (items && items.length) {
                 renderOffers(items);
-            } else {
-                return loadFromProblems();
+                return items.length;
             }
+            return 0;
+        });
+    }
+
+    loadFromProblems()
+        .then(function(count) {
+            if (!count) return loadFromPromotionsApi();
         })
         .catch(function() {
-            loadFromProblems().catch(function() {
+            loadFromPromotionsApi().catch(function() {
                 list.innerHTML = '<div class="col-12 text-center text-danger is-visible">Could not load offers. Start the API with <code>dotnet run</code> in Backend/OexaDentalClinic.Api.</div>';
             });
         });

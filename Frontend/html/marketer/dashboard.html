@@ -31,10 +31,11 @@
                             <input class="form-control mb-2" id="title" placeholder="Promotion title">
                             <textarea class="form-control mb-2" id="description" placeholder="Description" rows="2"></textarea>
                             <input class="form-control mb-2" id="discount" type="number" min="1" max="90" placeholder="Discount % (1–90)">
-                            <label class="form-label">Start date</label>
-                            <input class="form-control mb-2" id="startDate" type="date">
-                            <label class="form-label">End date</label>
-                            <input class="form-control mb-2" id="endDate" type="date">
+                            <label class="form-label">Start date <span class="text-danger">*</span></label>
+                            <input class="form-control mb-2" id="startDate" type="date" required>
+                            <label class="form-label">End date <span class="text-danger">*</span></label>
+                            <input class="form-control mb-2" id="endDate" type="date" required>
+                            <p class="small text-muted mb-2">Promotion is visible to patients only between these dates (inclusive).</p>
                             <input class="form-control mb-2" id="audience" placeholder="Target audience (optional)">
                             <button class="btn btn-primary w-100" id="addPromo">Add promotion</button>
                         </div>

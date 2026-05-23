@@ -85,13 +85,24 @@ document.addEventListener('DOMContentLoaded', function() {
             alert('Enter a discount between 1 and 90 percent.');
             return;
         }
+        var startDate = document.getElementById('startDate').value;
+        var endDate = document.getElementById('endDate').value;
+        if (!startDate || !endDate) {
+            alert('Please set start and end dates.');
+            return;
+        }
+        if (endDate < startDate) {
+            alert('End date must be on or after start date.');
+            return;
+        }
+
         try {
             await apiPost('/api/Promotions', {
                 title: document.getElementById('title').value.trim(),
                 description: document.getElementById('description').value.trim(),
                 discountPercent: discount,
-                startDate: document.getElementById('startDate').value,
-                endDate: document.getElementById('endDate').value,
+                startDate: startDate,
+                endDate: endDate,
                 targetAudience: document.getElementById('audience').value.trim() || 'All patients',
                 problemKey: problemKey
             });
@@ -104,6 +115,13 @@ document.addEventListener('DOMContentLoaded', function() {
             alert(e.message || 'Could not create promotion');
         }
     });
+
+    var today = new Date().toISOString().split('T')[0];
+    var in30 = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    document.getElementById('startDate').value = today;
+    document.getElementById('endDate').value = in30;
+    document.getElementById('startDate').min = today;
+    document.getElementById('endDate').min = today;
 
     loadCatalog().then(loadPromos);
 });
