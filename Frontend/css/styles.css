@@ -354,6 +354,104 @@ body {
     margin-bottom: 2rem;
 }
 
+.staff-main-photo {
+    margin-bottom: 2.5rem;
+    text-align: center;
+}
+
+.staff-main-photo .staff-team-banner {
+    max-width: 100%;
+    width: min(960px, 100%);
+    margin: 0 auto;
+    display: block;
+}
+
+.staff-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    max-width: 720px;
+    margin: 0 auto;
+}
+
+.staff-profile-card {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    background: var(--white);
+    border-radius: 20px;
+    padding: 1.25rem 1.5rem;
+    box-shadow: var(--shadow);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.staff-profile-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 16px 40px rgba(30, 58, 138, 0.15);
+}
+
+.staff-photo-circle {
+    position: relative;
+    width: 132px;
+    height: 132px;
+    min-width: 132px;
+    box-sizing: border-box;
+    border-radius: 50%;
+    border: 4px solid var(--blue-400);
+    background-color: var(--white);
+    background-repeat: no-repeat;
+    background-position: center var(--portrait-bg-y, 50%);
+    background-size: var(--portrait-bg-size, 262%);
+    overflow: hidden;
+    flex-shrink: 0;
+    box-shadow: 0 6px 20px rgba(30, 58, 138, 0.15);
+}
+
+.staff-profile-img {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+.staff-profile-body h3 {
+    color: var(--blue-800);
+    font-weight: 800;
+    font-size: 1.25rem;
+    margin-bottom: 0.25rem;
+}
+
+.staff-profile-body .staff-role {
+    color: var(--blue-600);
+    font-weight: 600;
+    font-size: 0.95rem;
+    margin-bottom: 0.5rem;
+}
+
+.staff-profile-body p:last-child {
+    color: var(--text-muted);
+    font-size: 0.92rem;
+    margin: 0;
+    line-height: 1.5;
+}
+
+@media (max-width: 576px) {
+    .staff-profile-card {
+        flex-direction: column;
+        text-align: center;
+    }
+    .staff-photo-circle {
+        width: 150px;
+        height: 150px;
+        min-width: 150px;
+    }
+}
+
 .staff-faces-row {
     display: flex;
     justify-content: center;
