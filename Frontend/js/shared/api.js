@@ -49,13 +49,24 @@ async function apiGet(path) {
     return res.json();
 }
 
+async function parseApiError(res) {
+    const text = await res.text();
+    try {
+        const j = JSON.parse(text);
+        throw new Error(j.error || j.detail || j.title || text);
+    } catch (e) {
+        if (e instanceof SyntaxError) throw new Error(text || res.statusText);
+        throw e;
+    }
+}
+
 async function apiPost(path, body) {
     const res = await fetch(API_BASE_URL + path, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
     });
-    if (!res.ok) throw new Error(await res.text());
+    if (!res.ok) await parseApiError(res);
     return res.json();
 }
 
@@ -65,7 +76,7 @@ async function apiPatch(path, body) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
     });
-    if (!res.ok) throw new Error(await res.text());
+    if (!res.ok) await parseApiError(res);
     return res.json();
 }
 
@@ -75,8 +86,16 @@ async function apiPut(path, body) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
     });
-    if (!res.ok) throw new Error(await res.text());
+    if (!res.ok) await parseApiError(res);
     return res.json();
+}
+
+async function apiDelete(path) {
+    const res = await fetch(API_BASE_URL + path, { method: 'DELETE' });
+    if (!res.ok) await parseApiError(res);
+    if (res.status === 204) return null;
+    const text = await res.text();
+    return text ? JSON.parse(text) : null;
 }
 
 function formatDateTime(value) {

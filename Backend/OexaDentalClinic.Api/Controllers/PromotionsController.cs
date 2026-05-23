@@ -21,7 +21,23 @@ namespace OexaDentalClinic.Api.Controllers
         public async Task<IActionResult> GetAll()
         {
             var items = await _db.Promotions.OrderByDescending(p => p.StartDate).ToListAsync();
-            return Ok(items);
+            var problems = await _db.DentalProblems.ToDictionaryAsync(p => p.Key, p => p.Name);
+
+            return Ok(items.Select(p => new
+            {
+                p.Id,
+                p.Title,
+                p.Description,
+                p.DiscountPercent,
+                p.StartDate,
+                p.EndDate,
+                p.IsActive,
+                p.TargetAudience,
+                p.ProblemKey,
+                TreatmentName = p.ProblemKey != null && problems.ContainsKey(p.ProblemKey)
+                    ? problems[p.ProblemKey]
+                    : null
+            }));
         }
 
         [HttpGet("active")]
@@ -74,6 +90,17 @@ namespace OexaDentalClinic.Api.Controllers
             if (!DateTime.TryParse(dto.StartDate, out var start) || !DateTime.TryParse(dto.EndDate, out var end))
                 return BadRequest(new { error = "Invalid date format." });
 
+            if (string.IsNullOrWhiteSpace(dto.ProblemKey))
+                return BadRequest(new { error = "Select a treatment to apply this discount to." });
+
+            var problemKey = dto.ProblemKey.Trim().ToLowerInvariant();
+            var problem = await _db.DentalProblems.FirstOrDefaultAsync(p => p.Key == problemKey);
+            if (problem == null)
+                return BadRequest(new { error = "Selected treatment does not exist." });
+
+            if (dto.DiscountPercent < 1 || dto.DiscountPercent > 90)
+                return BadRequest(new { error = "Discount must be between 1 and 90 percent." });
+
             var promo = new Promotion
             {
                 Title = dto.Title.Trim(),
@@ -82,7 +109,7 @@ namespace OexaDentalClinic.Api.Controllers
                 StartDate = start,
                 EndDate = end,
                 TargetAudience = dto.TargetAudience?.Trim(),
-                ProblemKey = dto.ProblemKey?.Trim(),
+                ProblemKey = problemKey,
                 IsActive = true
             };
 

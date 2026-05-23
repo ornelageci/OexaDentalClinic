@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin - Treatments</title>
+    <meta name="oexa-api-url" content="http://localhost:5095">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../../css/portal.css">
+</head>
+<body class="portal-body">
+    <nav class="navbar portal-nav py-3">
+        <div class="container">
+            <a href="dashboard.html" class="navbar-brand">Admin Panel</a>
+            <div class="d-flex gap-2">
+                <a href="users.html" class="btn btn-outline-primary btn-sm">Users</a>
+                <a href="appointments.html" class="btn btn-outline-primary btn-sm">Appointments</a>
+                <button class="btn btn-outline-secondary btn-sm" id="logoutBtn">Logout</button>
+            </div>
+        </div>
+    </nav>
+
+    <section class="py-4">
+        <div class="container">
+            <h2 class="mb-3">Manage treatments</h2>
+            <p class="text-muted mb-4">Add, edit, or remove treatments shown to patients when booking. Changes to price and duration apply immediately.</p>
+
+            <div class="card portal-card mb-4">
+                <div class="card-body">
+                    <h4 id="formTitle">Add new treatment</h4>
+                    <input type="hidden" id="editId" value="">
+                    <div class="row g-2">
+                        <div class="col-md-4">
+                            <label class="form-label">Key (URL id)</label>
+                            <input class="form-control" id="tKey" placeholder="e.g. teeth-whitening">
+                            <small class="text-muted">Lowercase, hyphens only. Cannot change after create.</small>
+                        </div>
+                        <div class="col-md-8">
+                            <label class="form-label">Display name</label>
+                            <input class="form-control" id="tName" placeholder="Teeth whitening">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Description</label>
+                            <textarea class="form-control" id="tDesc" rows="2" placeholder="Short description for patients"></textarea>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Price (EUR)</label>
+                            <input class="form-control" id="tPrice" type="number" step="0.01" min="0">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Duration (minutes)</label>
+                            <input class="form-control" id="tDuration" type="number" min="15" max="480" value="60">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Specialist category</label>
+                            <select class="form-control" id="tCategory">
+                                <option value="general">General dentistry</option>
+                                <option value="orthodontics">Orthodontics</option>
+                                <option value="cosmetic">Cosmetic dentistry</option>
+                                <option value="pediatric">Pediatric dentistry</option>
+                                <option value="oral-surgery">Oral surgery</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end gap-2">
+                            <button class="btn btn-primary w-100" id="saveBtn">Save</button>
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button class="btn btn-outline-secondary w-100 d-none" id="cancelEdit">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card portal-card">
+                <div class="card-body table-responsive">
+                    <table class="table table-sm align-middle">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Key</th>
+                                <th>Price</th>
+                                <th>Duration</th>
+                                <th>Category</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="treatmentsBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <script src="../../js/shared/api.js"></script>
+    <script src="../../js/portal/auth.js"></script>
+    <script src="../../js/admin/treatments.js"></script>
+</body>
+</html>
