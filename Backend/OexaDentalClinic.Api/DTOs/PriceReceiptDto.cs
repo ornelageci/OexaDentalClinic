@@ -11,9 +11,19 @@ namespace OexaDentalClinic.Api.DTOs
         public decimal UnitPrice { get; set; }
     }
 
+    public class PriceReceiptTreatmentLineDto
+    {
+        [Required]
+        public int TreatmentLineId { get; set; }
+
+        [Required]
+        public decimal UnitPrice { get; set; }
+    }
+
     public class PriceReceiptDto
     {
-        [Required, MinLength(1)]
-        public List<PriceReceiptLineDto> Lines { get; set; } = new();
+        public List<PriceReceiptLineDto> MedicationLines { get; set; } = new();
+
+        public List<PriceReceiptTreatmentLineDto> TreatmentLines { get; set; } = new();
     }
 }

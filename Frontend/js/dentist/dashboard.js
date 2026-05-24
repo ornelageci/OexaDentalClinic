@@ -44,21 +44,23 @@ document.addEventListener('DOMContentLoaded', function() {
                     dateCell += '<p class="small text-muted mb-0">' + treatment + '</p>';
                 }
                 let actions = '';
-                if (a.status === 'InProgress') {
+                var st = pickField(a, 'displayStatus', 'status') || a.status;
+                if (st === 'InProgress') {
                     actions += '<button class="btn btn-sm btn-primary me-1" data-complete="' + a.id + '">Complete visit</button>';
                 }
-                if (a.status === 'Completed' || a.status === 'InProgress') {
+                if (st === 'Completed' || st === 'InProgress') {
                     actions += '<button class="btn btn-sm btn-outline-secondary" data-receipt="' + a.id + '">Receipt</button>';
                 }
                 actions += '<button class="btn btn-sm btn-outline-secondary ms-1" data-open="' + a.id + '">Treatment</button>';
                 actions += '<button class="btn btn-sm btn-outline-info ms-1" data-info="' + a.id + '">Info</button>';
-                return '<tr><td>' + a.id + '</td><td>' + a.firstName + ' ' + a.lastName + '</td><td>' + dateCell + '</td><td>' + statusBadge(a.status) + '</td><td>' + actions + '</td></tr>';
+                var status = pickField(a, 'displayStatus', 'status') || a.status;
+                return '<tr><td>' + a.id + '</td><td>' + a.firstName + ' ' + a.lastName + '</td><td>' + dateCell + '</td><td>' + statusBadge(status) + '</td><td>' + actions + '</td></tr>';
             }).join('');
 
             body.querySelectorAll('[data-complete]').forEach(function(btn) {
                 btn.addEventListener('click', async function() {
                     const id = btn.getAttribute('data-complete');
-                    await apiPatch('/api/Appointments/' + id + '/status', { status: 'Completed' });
+                    await apiPatch('/api/Appointments/' + id + '/complete-visit', { dentistUserId: user.id });
                     selectedApptId = id;
                     document.getElementById('treatmentApptId').value = id;
                     medList.innerHTML = '';
@@ -107,7 +109,11 @@ document.addEventListener('DOMContentLoaded', function() {
             if (inp.value.trim()) meds.push(inp.value.trim());
         });
         if (!meds.length) { alert('Add at least one medication'); return; }
-        await apiPost('/api/Receipts/medications', { appointmentId: Number(id), medications: meds });
+        await apiPost('/api/Receipts/medications', {
+            appointmentId: Number(id),
+            medications: meds,
+            dentistUserId: user.id
+        });
         alert('Receipt sent to manager for pricing.');
         medList.innerHTML = '';
     });

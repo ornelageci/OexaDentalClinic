@@ -287,37 +287,92 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+    function receiptPick(obj, a, b) {
+        if (!obj) return undefined;
+        if (obj[a] !== undefined && obj[a] !== null) return obj[a];
+        return obj[b];
+    }
+
     document.getElementById('loadReceiptBtn').addEventListener('click', async function() {
         const apptId = document.getElementById('receiptApptId').value.trim();
         const box = document.getElementById('receiptPricing');
         if (!apptId) return;
         try {
             const data = await apiGet('/api/Receipts/' + apptId, { loading: true });
-            if (!data.medications || !data.medications.length) {
-                box.innerHTML = '<p class="text-muted">No medications from dentist yet.</p>';
+            var treatments = data.treatments || data.Treatments || [];
+            var medications = data.medications || data.Medications || [];
+            var receipt = data.receipt || data.Receipt;
+
+            if (!treatments.length && !medications.length) {
+                box.innerHTML = '<p class="text-muted">No treatments or medications submitted yet.</p>';
                 return;
             }
-            let html = '<table class="table table-sm"><thead><tr><th>Medication</th><th>Price (EUR)</th></tr></thead><tbody>';
-            data.medications.forEach(function(m) {
-                html += '<tr><td>' + m.name + '</td><td><input type="number" step="0.01" class="form-control form-control-sm med-price" data-id="' + m.id + '" value="' + (m.unitPrice || '') + '"></td></tr>';
-            });
-            html += '</tbody></table><button type="button" class="btn btn-primary" id="saveReceiptPrices">Finalize receipt</button>';
+
+            var html = '';
+
+            if (treatments.length) {
+                html += '<h6 class="mb-2">Treatments (EUR)</h6>';
+                html += '<table class="table table-sm mb-3"><thead><tr><th>Treatment</th><th>Dentist</th><th class="text-end">Price (EUR)</th></tr></thead><tbody>';
+                treatments.forEach(function(t) {
+                    var lineId = receiptPick(t, 'appointmentTreatmentId', 'AppointmentTreatmentId');
+                    var suggested = receiptPick(t, 'suggestedPriceEur', 'SuggestedPriceEur') ||
+                        receiptPick(t, 'unitPrice', 'UnitPrice') || '';
+                    var name = receiptPick(t, 'name', 'Name');
+                    var dentist = receiptPick(t, 'dentistName', 'DentistName') || '—';
+                    html += '<tr><td>' + name + '</td><td class="small">' + dentist + '</td><td class="text-end">' +
+                        '<input type="number" step="0.01" min="0" class="form-control form-control-sm treatment-price text-end" ' +
+                        'data-line-id="' + lineId + '" value="' + suggested + '" placeholder="EUR"></td></tr>';
+                });
+                html += '</tbody></table>';
+            }
+
+            if (medications.length) {
+                html += '<h6 class="mb-2">Medications (EUR)</h6>';
+                html += '<table class="table table-sm mb-3"><thead><tr><th>Medication</th><th>Dentist</th><th class="text-end">Price (EUR)</th></tr></thead><tbody>';
+                medications.forEach(function(m) {
+                    var dentist = receiptPick(m, 'dentistName', 'DentistName') || '—';
+                    html += '<tr><td>' + receiptPick(m, 'name', 'Name') + '</td><td class="small">' + dentist + '</td><td class="text-end">' +
+                        '<input type="number" step="0.01" min="0" class="form-control form-control-sm med-price text-end" ' +
+                        'data-id="' + receiptPick(m, 'id', 'Id') + '" value="' + (receiptPick(m, 'unitPrice', 'UnitPrice') || '') + '" placeholder="EUR"></td></tr>';
+                });
+                html += '</tbody></table>';
+            }
+
+            if (!receipt) {
+                box.innerHTML = '<p class="text-danger">Could not load receipt record.</p>';
+                return;
+            }
+
+            html += '<button type="button" class="btn btn-primary" id="saveReceiptPrices">Finalize receipt (EUR)</button>';
             box.innerHTML = html;
             document.getElementById('saveReceiptPrices').addEventListener('click', async function() {
-                const lines = [];
+                var medicationLines = [];
+                var treatmentLines = [];
                 box.querySelectorAll('.med-price').forEach(function(inp) {
-                    lines.push({ medicationId: Number(inp.getAttribute('data-id')), unitPrice: Number(inp.value) });
+                    medicationLines.push({
+                        medicationId: Number(inp.getAttribute('data-id')),
+                        unitPrice: Number(inp.value)
+                    });
+                });
+                box.querySelectorAll('.treatment-price').forEach(function(inp) {
+                    treatmentLines.push({
+                        treatmentLineId: Number(inp.getAttribute('data-line-id')),
+                        unitPrice: Number(inp.value)
+                    });
                 });
                 try {
-                    await apiPut('/api/Receipts/' + data.receipt.id + '/prices', { lines: lines });
+                    await apiPut('/api/Receipts/' + receipt.id + '/prices', {
+                        medicationLines: medicationLines,
+                        treatmentLines: treatmentLines
+                    });
                     alert('Receipt finalized. Emails sent.');
                     box.innerHTML = '<p class="text-success">Receipt saved.</p>';
                 } catch (e) {
                     alert(e.message || 'Could not save receipt');
                 }
             });
-        } catch {
-            box.innerHTML = '<p class="text-danger">No receipt found for this appointment.</p>';
+        } catch (e) {
+            box.innerHTML = '<p class="text-danger">' + (e.message || 'No receipt found for this appointment.') + '</p>';
         }
     });
 

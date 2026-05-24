@@ -13,8 +13,11 @@ namespace OexaDentalClinic.Api.Data
         public DbSet<Review> Reviews => Set<Review>();
         public DbSet<Receipt> Receipts => Set<Receipt>();
         public DbSet<ReceiptMedication> ReceiptMedications => Set<ReceiptMedication>();
+        public DbSet<ReceiptTreatment> ReceiptTreatments => Set<ReceiptTreatment>();
         public DbSet<TreatmentRecord> TreatmentRecords => Set<TreatmentRecord>();
         public DbSet<DentalProblem> DentalProblems => Set<DentalProblem>();
         public DbSet<AppointmentTreatment> AppointmentTreatments => Set<AppointmentTreatment>();
+        public DbSet<UserRoleDefinition> UserRoleDefinitions => Set<UserRoleDefinition>();
+        public DbSet<DentistCategory> DentistCategories => Set<DentistCategory>();
     }
 }

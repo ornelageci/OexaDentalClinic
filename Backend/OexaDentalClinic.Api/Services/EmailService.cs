@@ -92,15 +92,27 @@ namespace OexaDentalClinic.Api.Services
                 AppendDentistToMessage("Reminder: you have an upcoming dental visit.", dentist));
         }
 
-        public async Task SendReceiptFinalizedAsync(Appointment appointment, Receipt receipt, IEnumerable<ReceiptMedication> medications)
+        public async Task SendReceiptFinalizedAsync(
+            Appointment appointment,
+            Receipt receipt,
+            IEnumerable<ReceiptMedication> medications,
+            IEnumerable<ReceiptTreatment> treatments)
         {
             var (appt, dentist) = await ResolveAppointmentContextAsync(appointment, null);
-            var medLines = string.Join("\n", medications.Select(m => $"- {m.Name}: {m.UnitPrice:C}"));
+            var treatmentLines = string.Join("\n", treatments
+                .Where(t => t.UnitPrice.HasValue)
+                .Select(t => $"- {t.Name}: {t.UnitPrice:0.00} EUR"));
+            var medLines = string.Join("\n", medications
+                .Where(m => m.UnitPrice.HasValue)
+                .Select(m => $"- {m.Name}: {m.UnitPrice:0.00} EUR"));
+            var body = $"Receipt {receipt.ReceiptNumber}\nTotal: {receipt.TotalAmount:0.00} EUR";
+            if (!string.IsNullOrWhiteSpace(treatmentLines))
+                body += "\n\nTreatments:\n" + treatmentLines;
+            if (!string.IsNullOrWhiteSpace(medLines))
+                body += "\n\nMedications:\n" + medLines;
             await SendToAllPartiesAsync(appt, dentist,
                 "Receipt finalized - Oexa Dental Clinic",
-                AppendDentistToMessage(
-                    $"Receipt {receipt.ReceiptNumber}\nTotal: {receipt.TotalAmount:C}\n\nMedications:\n{medLines}",
-                    dentist));
+                AppendDentistToMessage(body, dentist));
         }
 
         public async Task SendStatusChangedAsync(Appointment appointment, string message)

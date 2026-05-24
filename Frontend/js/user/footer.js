@@ -2,6 +2,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const footer = document.getElementById('footer');
     if (!footer) return;
 
+    const user = typeof getSession === 'function' ? getSession() : null;
+    const isPatient = user && (user.role === 'Patient' || user.Role === 'Patient');
+    const staffLink = isPatient ? '' : '<li><a href="../portal/login.html">Staff Login</a></li>';
+
     footer.innerHTML = `
         <div class="container">
             <div class="row">
@@ -21,7 +25,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <li><a href="login.html">Login</a></li>
                         <li><a href="register.html">Register</a></li>
                         <li><a href="contact.html">Contact Us</a></li>
-                        <li><a href="../portal/login.html">Staff Login</a></li>
+                        ${staffLink}
                     </ul>
                 </div>
                 <div class="col-md-4 mb-3">

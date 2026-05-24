@@ -177,12 +177,14 @@ namespace OexaDentalClinic.Api.Controllers
                     string? myTreatment = null;
                     int? myDuration = null;
 
+                    var myPartDone = false;
                     if (lines.Count > 0)
                     {
                         var primary = lines.OrderBy(t => t.ScheduledStart).First();
                         displayTime = primary.ScheduledStart;
                         myDuration = AppointmentSchedulingService.LineDurationMinutes(primary);
                         myTreatment = problemNames.GetValueOrDefault(primary.ProblemKey, primary.ProblemKey);
+                        myPartDone = lines.All(t => t.DentistCompletedAt != null);
                         if (lines.Count > 1)
                         {
                             myTreatment = string.Join(", ", lines
@@ -194,7 +196,14 @@ namespace OexaDentalClinic.Api.Controllers
                     {
                         var keys = AppointmentSchedulingService.ParseServiceKeys(a.ServiceNeeded);
                         myTreatment = string.Join(", ", keys.Select(k => problemNames.GetValueOrDefault(k, k)));
+                        myPartDone = a.Status == "Completed";
                     }
+
+                    var displayStatus = a.Status == "Completed"
+                        ? "Completed"
+                        : myPartDone
+                            ? "InProgress"
+                            : a.Status;
 
                     return new
                     {
@@ -211,6 +220,8 @@ namespace OexaDentalClinic.Api.Controllers
                         a.ServiceNeeded,
                         a.AdditionalNotes,
                         a.Status,
+                        displayStatus,
+                        myPartCompleted = myPartDone,
                         a.IsSpecialAppointment,
                         a.AssignedDentistUserId
                     };
@@ -495,6 +506,48 @@ namespace OexaDentalClinic.Api.Controllers
             });
         }
 
+        [HttpPatch("{id:int}/complete-visit")]
+        public async Task<IActionResult> CompleteVisit(int id, [FromBody] CompleteVisitDto dto)
+        {
+            var appt = await _db.Appointments.FindAsync(id);
+            if (appt == null) return NotFound();
+
+            if (appt.Status == "Cancelled")
+                return BadRequest(new { error = "Appointment is cancelled." });
+
+            var myLines = await _db.AppointmentTreatments
+                .Where(t => t.AppointmentId == id && t.AssignedDentistUserId == dto.DentistUserId)
+                .ToListAsync();
+
+            if (myLines.Count == 0)
+                return BadRequest(new { error = "You are not assigned to any treatment on this appointment." });
+
+            var now = DateTime.UtcNow;
+            foreach (var line in myLines)
+                line.DentistCompletedAt = now;
+
+            if (appt.Status == "Booked")
+                appt.Status = "InProgress";
+
+            var allLines = await _db.AppointmentTreatments.Where(t => t.AppointmentId == id).ToListAsync();
+            var assignedLines = allLines.Where(t => t.AssignedDentistUserId != null).ToList();
+
+            var allDentistsDone = assignedLines.Count > 0 &&
+                assignedLines.All(t => t.DentistCompletedAt != null);
+
+            if (allDentistsDone)
+            {
+                appt.Status = "Completed";
+                await _db.SaveChangesAsync();
+                await _email.SendStatusChangedAsync(appt,
+                    "Your visit has been completed. Thank you for choosing Oexa Dental Clinic.");
+                return Ok(new { appt.Id, appt.Status, allTreatmentsCompleted = true });
+            }
+
+            await _db.SaveChangesAsync();
+            return Ok(new { appt.Id, appt.Status, allTreatmentsCompleted = false, yourPartCompleted = true });
+        }
+
         [HttpPatch("{id:int}/status")]
         public async Task<IActionResult> UpdateStatus(int id, [FromBody] UpdateAppointmentStatusDto dto)
         {
@@ -504,6 +557,14 @@ namespace OexaDentalClinic.Api.Controllers
             var allowed = new[] { "Booked", "InProgress", "Completed", "Cancelled" };
             if (!allowed.Contains(dto.Status))
                 return BadRequest(new { error = "Invalid status." });
+
+            if (dto.Status == "Completed")
+            {
+                var lines = await _db.AppointmentTreatments.Where(t => t.AppointmentId == id).ToListAsync();
+                var assigned = lines.Where(t => t.AssignedDentistUserId != null).ToList();
+                if (assigned.Count > 0 && assigned.Any(t => t.DentistCompletedAt == null))
+                    return BadRequest(new { error = "Not all dentists have completed their treatments yet." });
+            }
 
             appt.Status = dto.Status;
             await _db.SaveChangesAsync();

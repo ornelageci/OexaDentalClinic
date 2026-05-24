@@ -7,11 +7,53 @@ namespace OexaDentalClinic.Api.Data
     {
         public static void Seed(AppDbContext db)
         {
+            SeedRoleDefinitions(db);
+            SeedDentistCategories(db);
             SeedProblems(db);
             SeedUsers(db);
             EnsureDentist(db, "ornela.braho@oexa.com", "Ornela", "Braho", "general");
             EnsureDentist(db, "xhesika.azizaj@oexa.com", "Xhesika", "Azizaj", "cosmetic");
             SeedPromotions(db);
+        }
+
+        private static void SeedRoleDefinitions(AppDbContext db)
+        {
+            var defaults = new[]
+            {
+                new UserRoleDefinition { Key = "Patient", DisplayName = "Patient", SortOrder = 1, IsSystem = true },
+                new UserRoleDefinition { Key = "Dentist", DisplayName = "Dentist", SortOrder = 2, IsSystem = true },
+                new UserRoleDefinition { Key = "Manager", DisplayName = "Manager", SortOrder = 3, IsSystem = true },
+                new UserRoleDefinition { Key = "Marketer", DisplayName = "Marketer", SortOrder = 4, IsSystem = true },
+                new UserRoleDefinition { Key = "Admin", DisplayName = "Admin", SortOrder = 5, IsSystem = true }
+            };
+
+            foreach (var d in defaults)
+            {
+                if (!db.UserRoleDefinitions.Any(r => r.Key == d.Key))
+                    db.UserRoleDefinitions.Add(d);
+            }
+
+            db.SaveChanges();
+        }
+
+        private static void SeedDentistCategories(AppDbContext db)
+        {
+            var defaults = new[]
+            {
+                new DentistCategory { Key = "general", DisplayName = "General dentistry", SortOrder = 1 },
+                new DentistCategory { Key = "orthodontics", DisplayName = "Orthodontics", SortOrder = 2 },
+                new DentistCategory { Key = "cosmetic", DisplayName = "Cosmetic dentistry", SortOrder = 3 },
+                new DentistCategory { Key = "pediatric", DisplayName = "Pediatric dentistry", SortOrder = 4 },
+                new DentistCategory { Key = "oral-surgery", DisplayName = "Oral surgery", SortOrder = 5 }
+            };
+
+            foreach (var d in defaults)
+            {
+                if (!db.DentistCategories.Any(c => c.Key == d.Key))
+                    db.DentistCategories.Add(d);
+            }
+
+            db.SaveChanges();
         }
 
         private static void SeedProblems(AppDbContext db)

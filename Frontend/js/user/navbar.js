@@ -22,7 +22,9 @@ document.addEventListener('DOMContentLoaded', function() {
             <li><a class="dropdown-item ${active('register.html')}" href="register.html">Register</a></li>
         `;
     }
-    menuExtras += '<li><hr class="dropdown-divider"></li><li><a class="dropdown-item" href="../portal/login.html">Staff Login</a></li>';
+    if (!isPatient) {
+        menuExtras += '<li><hr class="dropdown-divider"></li><li><a class="dropdown-item" href="../portal/login.html">Staff Login</a></li>';
+    }
 
     navbar.className = 'navbar navbar-expand-lg fixed-top oexa-navbar';
     navbar.innerHTML = `

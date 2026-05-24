@@ -47,9 +47,18 @@ namespace OexaDentalClinic.Api.Controllers
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
 
-            var allowed = new[] { "Patient", "Dentist", "Manager", "Marketer", "Admin" };
-            if (!allowed.Contains(dto.Role))
-                return BadRequest(new { error = "Invalid role." });
+            var roleKey = dto.Role.Trim();
+            if (!await _db.UserRoleDefinitions.AnyAsync(r => r.Key == roleKey))
+                return BadRequest(new { error = "Invalid role. Add it under Manage roles first." });
+
+            if (roleKey == "Dentist")
+            {
+                var catKey = dto.DentistServiceKey?.Trim();
+                if (string.IsNullOrEmpty(catKey))
+                    return BadRequest(new { error = "Select a dentist type." });
+                if (!await _db.DentistCategories.AnyAsync(c => c.Key == catKey))
+                    return BadRequest(new { error = "Invalid dentist type." });
+            }
 
             var email = dto.Email.Trim().ToLower();
             if (await _db.Users.AnyAsync(u => u.Email.ToLower() == email))

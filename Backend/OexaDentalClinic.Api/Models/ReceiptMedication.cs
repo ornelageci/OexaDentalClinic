@@ -12,5 +12,7 @@ namespace OexaDentalClinic.Api.Models
         public string Name { get; set; } = null!;
 
         public decimal? UnitPrice { get; set; }
+
+        public int? SubmittedByDentistUserId { get; set; }
     }
 }

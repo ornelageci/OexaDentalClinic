@@ -12,6 +12,20 @@ document.addEventListener('DOMContentLoaded', function() {
         return obj[a] !== undefined && obj[a] !== null ? obj[a] : obj[b];
     }
 
+    var categories = [];
+
+    function loadCategories() {
+        return apiGet('/api/DentistCategories').then(function(items) {
+            categories = items;
+            var sel = document.getElementById('tCategory');
+            sel.innerHTML = items.map(function(c) {
+                var key = pick(c, 'key', 'Key');
+                var name = pick(c, 'displayName', 'DisplayName');
+                return '<option value="' + key + '">' + name + '</option>';
+            }).join('');
+        });
+    }
+
     function resetForm() {
         editId.value = '';
         tKey.value = '';
@@ -20,7 +34,9 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('tDesc').value = '';
         document.getElementById('tPrice').value = '';
         document.getElementById('tDuration').value = '60';
-        document.getElementById('tCategory').value = 'general';
+        if (categories.length) {
+            document.getElementById('tCategory').value = pick(categories[0], 'key', 'Key');
+        }
         formTitle.textContent = 'Add new treatment';
         cancelBtn.classList.add('d-none');
     }
@@ -122,6 +138,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    resetForm();
-    load();
+    loadCategories().then(function() {
+        resetForm();
+        load();
+    });
 });

@@ -11,7 +11,7 @@
     --text-dark: #1e293b;
     --text-muted: #64748b;
     --shadow: 0 10px 40px rgba(30, 58, 138, 0.12);
-    --nav-height: 76px;
+    --nav-height: 88px;
 }
 
 * {
@@ -53,9 +53,9 @@ body {
 }
 
 .oexa-logo-img {
-    height: 68px;
+    height: 80px;
     width: auto;
-    max-width: 220px;
+    max-width: 260px;
     object-fit: contain;
     border-radius: 10px;
 }

@@ -3,6 +3,22 @@ document.addEventListener('DOMContentLoaded', function() {
     if (!form) return;
 
     const user = typeof getSession === 'function' ? getSession() : null;
+    const isPatient = user && (user.role === 'Patient' || user.Role === 'Patient');
+
+    if (!isPatient) {
+        form.querySelectorAll('input, select, textarea, button').forEach(function(el) {
+            el.disabled = true;
+        });
+        var modalEl = document.getElementById('loginRequiredModal');
+        if (modalEl) {
+            bootstrap.Modal.getOrCreateInstance(modalEl).show();
+        } else {
+            alert('You have to log in in order to book an appointment.');
+            window.location.href = 'login.html';
+        }
+        return;
+    }
+
     if (user && user.role === 'Patient') {
         const fn = document.getElementById('firstName');
         const ln = document.getElementById('lastName');

@@ -14,11 +14,6 @@ namespace OexaDentalClinic.Api.Controllers
     {
         private readonly AppDbContext _db;
 
-        private static readonly string[] ValidCategories =
-        {
-            "general", "orthodontics", "cosmetic", "pediatric", "oral-surgery"
-        };
-
         public ProblemsController(AppDbContext db)
         {
             _db = db;
@@ -97,8 +92,12 @@ namespace OexaDentalClinic.Api.Controllers
             if (string.IsNullOrEmpty(key))
                 return BadRequest(new { error = "Treatment key is required (e.g. teeth-whitening)." });
 
-            if (!ValidCategories.Contains(dto.DentistCategoryKey.Trim().ToLowerInvariant()))
-                return BadRequest(new { error = "Invalid specialist category.", valid = ValidCategories });
+            var categoryKey = dto.DentistCategoryKey.Trim().ToLowerInvariant();
+            if (!await _db.DentistCategories.AnyAsync(c => c.Key == categoryKey))
+            {
+                var valid = await _db.DentistCategories.Select(c => c.Key).ToListAsync();
+                return BadRequest(new { error = "Invalid specialist category.", valid });
+            }
 
             if (await _db.DentalProblems.AnyAsync(p => p.Key == key))
                 return BadRequest(new { error = "A treatment with this key already exists." });
@@ -126,8 +125,12 @@ namespace OexaDentalClinic.Api.Controllers
             var problem = await _db.DentalProblems.FindAsync(id);
             if (problem == null) return NotFound();
 
-            if (!ValidCategories.Contains(dto.DentistCategoryKey.Trim().ToLowerInvariant()))
-                return BadRequest(new { error = "Invalid specialist category.", valid = ValidCategories });
+            var categoryKey = dto.DentistCategoryKey.Trim().ToLowerInvariant();
+            if (!await _db.DentistCategories.AnyAsync(c => c.Key == categoryKey))
+            {
+                var valid = await _db.DentistCategories.Select(c => c.Key).ToListAsync();
+                return BadRequest(new { error = "Invalid specialist category.", valid });
+            }
 
             problem.Name = dto.Name.Trim();
             problem.Description = string.IsNullOrWhiteSpace(dto.Description) ? null : dto.Description.Trim();

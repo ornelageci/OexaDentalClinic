@@ -17,5 +17,8 @@ namespace OexaDentalClinic.Api.Models
         public DateTime ScheduledStart { get; set; }
 
         public int DurationMinutes { get; set; } = 60;
+
+        /// <summary>When this dentist marked their part of the visit complete.</summary>
+        public DateTime? DentistCompletedAt { get; set; }
     }
 }

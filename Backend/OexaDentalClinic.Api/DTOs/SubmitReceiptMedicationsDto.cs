@@ -9,5 +9,8 @@ namespace OexaDentalClinic.Api.DTOs
 
         [Required, MinLength(1)]
         public List<string> Medications { get; set; } = new();
+
+        [Required]
+        public int DentistUserId { get; set; }
     }
 }
