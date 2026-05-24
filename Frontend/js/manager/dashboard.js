@@ -12,6 +12,23 @@ document.addEventListener('DOMContentLoaded', function() {
         alert('Could not load treatments: ' + (e.message || e));
     });
 
+    function pick(obj) {
+        for (var i = 1; i < arguments.length; i++) {
+            var key = arguments[i];
+            if (obj && obj[key] !== undefined) return obj[key];
+        }
+        return undefined;
+    }
+
+    function formatTimeRange(startIso, durationMinutes) {
+        if (!startIso) return '—';
+        var start = new Date(startIso);
+        if (isNaN(start.getTime())) return formatDateTime(startIso);
+        var end = new Date(start.getTime() + (durationMinutes || 60) * 60000);
+        return start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) +
+            ' – ' + end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+
     function loadUnassigned() {
         apiGet('/api/Appointments/unassigned').then(function(items) {
             const body = document.getElementById('unassignedBody');
@@ -23,20 +40,23 @@ document.addEventListener('DOMContentLoaded', function() {
                 var apptId = row.appointmentId || row.id;
                 var problemKey = row.problemKey || '';
                 var when = row.scheduledStart || row.preferredDateTime;
-                return '<tr data-appt="' + apptId + '" data-problem="' + escapeAttr(problemKey) + '">' +
+                var duration = row.durationMinutes || 60;
+                var windowLabel = '';
+                if (row.windowStart && row.windowEnd) {
+                    windowLabel = '<div class="small text-muted">Window: ' +
+                        formatDateTime(row.windowStart) + ' – ' +
+                        new Date(row.windowEnd).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) +
+                        '</div>';
+                }
+                return '<tr data-appt="' + apptId + '" data-problem="' + escapeAttr(problemKey) + '" data-line="' + (row.treatmentLineId || '') + '" data-duration="' + duration + '">' +
                     '<td>' + apptId + '</td>' +
                     '<td>' + row.firstName + ' ' + row.lastName + '</td>' +
                     '<td>' + (row.problemName || problems[problemKey] || problemKey) + '</td>' +
-                    '<td>' + formatDateTime(when) + '</td>' +
+                    '<td>' + formatTimeRange(when, duration) + windowLabel + '</td>' +
                     '<td class="assign-cell">' +
                     '<select class="form-select form-select-sm assign-select"><option value="">Loading dentists...</option></select>' +
-                    '<div class="reschedule-fields mt-1" style="display:none">' +
-                    '<label class="form-label small mb-0">New time (this treatment only)</label>' +
-                    '<div class="input-group input-group-sm">' +
-                    '<input type="date" class="form-control assign-date">' +
-                    '<input type="text" class="form-control assign-time" placeholder="HH:mm">' +
-                    '</div></div>' +
                     '<button type="button" class="btn btn-sm btn-primary assign-btn mt-1">Assign</button>' +
+                    '<button type="button" class="btn btn-sm btn-outline-secondary reschedule-row-btn mt-1 ms-1">Reschedule</button>' +
                     '<div class="small text-danger mt-1 assign-error" style="display:none"></div>' +
                     '</td></tr>';
             }).join('');
@@ -61,6 +81,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 tr.querySelector('.assign-btn').addEventListener('click', function() {
                     assignTreatment(tr);
                 });
+                tr.querySelector('.reschedule-row-btn').addEventListener('click', function() {
+                    openTreatmentReschedule(tr);
+                });
             });
         }).catch(function(e) {
             document.getElementById('unassignedBody').innerHTML =
@@ -73,9 +96,6 @@ document.addEventListener('DOMContentLoaded', function() {
         const problemKey = tr.getAttribute('data-problem');
         const sel = tr.querySelector('.assign-select');
         const errBox = tr.querySelector('.assign-error');
-        const rescheduleBox = tr.querySelector('.reschedule-fields');
-        const dateInp = tr.querySelector('.assign-date');
-        const timeInp = tr.querySelector('.assign-time');
         const btn = tr.querySelector('.assign-btn');
         const dentistId = sel && sel.value;
 
@@ -91,10 +111,6 @@ document.addEventListener('DOMContentLoaded', function() {
             problemKey: problemKey,
             dentistUserId: Number(dentistId)
         };
-        if (dateInp && dateInp.value && timeInp && timeInp.value.trim()) {
-            payload.preferredDate = dateInp.value;
-            payload.preferredTime = timeInp.value.trim();
-        }
 
         btn.disabled = true;
         const prevText = btn.textContent;
@@ -107,12 +123,12 @@ document.addEventListener('DOMContentLoaded', function() {
             loadList();
         } catch (e) {
             var msg = e.message || 'Assignment failed.';
-            var needsReschedule = e.body && e.body.needsReschedule;
+            var body = e.body || {};
             errBox.textContent = msg;
             errBox.style.display = 'block';
-            if (needsReschedule && rescheduleBox) {
-                rescheduleBox.style.display = 'block';
-                alert(msg + ' Enter a new date and time below, then click Assign again.');
+            if (body.needsReschedule) {
+                openTreatmentReschedule(tr, body);
+                alert(msg + ' Use the Reschedule section below to pick an available time, then click Reschedule.');
             } else {
                 alert(msg);
             }
@@ -121,6 +137,139 @@ document.addEventListener('DOMContentLoaded', function() {
             btn.textContent = prevText;
         }
     }
+
+    function ensureTimeSelect() {
+        var el = document.getElementById('newTime');
+        if (!el || el.tagName === 'SELECT') return;
+        el.outerHTML = '<select class="form-select" id="newTime" disabled><option value="">Select date and dentist first</option></select>';
+    }
+
+    function ensureTimeInput() {
+        var el = document.getElementById('newTime');
+        if (!el || el.tagName === 'INPUT') return;
+        el.outerHTML = '<input class="form-control" id="newTime" placeholder="HH:mm">';
+    }
+
+    function openTreatmentReschedule(tr, extra) {
+        extra = extra || {};
+        var apptId = tr.getAttribute('data-appt');
+        var problemKey = tr.getAttribute('data-problem');
+        var lineId = tr.getAttribute('data-line');
+        var duration = tr.getAttribute('data-duration') || extra.durationMinutes || 60;
+        var sel = tr.querySelector('.assign-select');
+        var dentistId = extra.dentistUserId || (sel && sel.value);
+        if (!dentistId) {
+            alert('Select a dentist for this treatment first.');
+            return;
+        }
+
+        ensureTimeSelect();
+        document.getElementById('rescheduleMode').value = 'treatment';
+        document.getElementById('actionId').value = apptId;
+        document.getElementById('rescheduleProblemKey').value = problemKey;
+        document.getElementById('rescheduleTreatmentLineId').value = lineId || extra.treatmentLineId || '';
+        document.getElementById('rescheduleDentistId').value = dentistId || '';
+        document.getElementById('rescheduleDuration').value = duration;
+
+        var treatmentName = problems[problemKey] || problemKey;
+        document.getElementById('rescheduleContext').textContent =
+            'Rescheduling treatment: ' + treatmentName + ' (appointment #' + apptId + '). Busy times are disabled.';
+
+        var dateVal = extra.suggestedDate || '';
+        if (!dateVal && extra.windowStart) {
+            dateVal = String(extra.windowStart).substring(0, 10);
+        }
+        document.getElementById('newDate').value = dateVal;
+
+        var section = document.getElementById('rescheduleSection');
+        section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+        if (dentistId && dateVal) {
+            loadDentistSlots();
+        } else {
+            resetSlotSelect('Select a dentist in the row above, then pick a date.');
+        }
+    }
+
+    function resetSlotSelect(message) {
+        var newTime = document.getElementById('newTime');
+        newTime.innerHTML = '<option value="">' + (message || 'Select date and dentist first') + '</option>';
+        newTime.disabled = true;
+        document.getElementById('slotHint').textContent = '';
+    }
+
+    async function loadDentistSlots() {
+        var mode = document.getElementById('rescheduleMode').value;
+        var newTime = document.getElementById('newTime');
+        var slotHint = document.getElementById('slotHint');
+        var date = document.getElementById('newDate').value;
+
+        if (mode === 'treatment') {
+            var dentistId = document.getElementById('rescheduleDentistId').value;
+            var apptId = document.getElementById('actionId').value;
+            var duration = document.getElementById('rescheduleDuration').value || 60;
+            var lineId = document.getElementById('rescheduleTreatmentLineId').value;
+
+            if (!dentistId || !date || !apptId) {
+                resetSlotSelect('Select dentist and date first');
+                return;
+            }
+
+            newTime.innerHTML = '<option value="">Loading times...</option>';
+            newTime.disabled = true;
+
+            try {
+                var url = '/api/Appointments/dentist-slots?dentistId=' + encodeURIComponent(dentistId) +
+                    '&date=' + encodeURIComponent(date) +
+                    '&durationMinutes=' + encodeURIComponent(duration) +
+                    '&appointmentId=' + encodeURIComponent(apptId);
+                if (lineId) url += '&treatmentLineId=' + encodeURIComponent(lineId);
+
+                var slots = await apiGet(url, { loading: true });
+                if (!slots || !slots.length) {
+                    resetSlotSelect('No slots in patient window');
+                    slotHint.textContent = 'Try another date or use whole-appointment reschedule.';
+                    return;
+                }
+
+                newTime.innerHTML = '<option value="">Select a time</option>' + slots.map(function(s) {
+                    var time = pick(s, 'time', 'Time');
+                    var label = pick(s, 'label', 'Label');
+                    var available = pick(s, 'available', 'Available');
+                    if (!available) label += ' (busy)';
+                    return '<option value="' + time + '" ' + (available ? '' : 'disabled') + '>' + label + '</option>';
+                }).join('');
+                newTime.disabled = false;
+                var availableCount = slots.filter(function(s) { return pick(s, 'available', 'Available'); }).length;
+                slotHint.textContent = availableCount + ' of ' + slots.length + ' times available for this dentist.';
+            } catch (e) {
+                resetSlotSelect('Could not load slots');
+                slotHint.textContent = e.message || '';
+            }
+            return;
+        }
+
+        resetSlotSelect('Whole-appointment reschedule: enter time as HH:mm');
+        ensureTimeInput();
+    }
+
+    document.getElementById('newDate').addEventListener('change', function() {
+        if (document.getElementById('rescheduleMode').value === 'treatment') {
+            loadDentistSlots();
+        }
+    });
+
+    document.getElementById('actionId').addEventListener('change', function() {
+        document.getElementById('rescheduleMode').value = 'appointment';
+        document.getElementById('rescheduleProblemKey').value = '';
+        document.getElementById('rescheduleTreatmentLineId').value = '';
+        document.getElementById('rescheduleDentistId').value = '';
+        document.getElementById('rescheduleDuration').value = '';
+        document.getElementById('rescheduleContext').textContent =
+            'Reschedule a whole appointment, or use Reschedule on a treatment row to adjust one dentist\'s time.';
+        ensureTimeInput();
+        document.getElementById('slotHint').textContent = 'Enter a new start time as HH:mm for the whole visit.';
+    });
 
     function escapeAttr(s) {
         return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
@@ -175,15 +324,41 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('rescheduleBtn').addEventListener('click', async function() {
         const id = document.getElementById('actionId').value.trim();
         if (!id) return;
+
+        var mode = document.getElementById('rescheduleMode').value;
+        var dateVal = document.getElementById('newDate').value;
+        var timeEl = document.getElementById('newTime');
+        var timeVal = timeEl ? timeEl.value : '';
+
+        if (!dateVal || !timeVal) {
+            alert('Select date and time.');
+            return;
+        }
+
         try {
-            const appt = await apiGet('/api/Appointments/' + id, { loading: true });
-            await apiPut('/api/Appointments/' + id + '/reschedule', {
-                firstName: appt.firstName, lastName: appt.lastName, email: appt.email, phoneNumber: appt.phoneNumber,
-                preferredDate: document.getElementById('newDate').value,
-                preferredTime: document.getElementById('newTime').value,
-                serviceNeeded: appt.serviceNeeded
-            });
-            alert('Rescheduled. Confirmation emails sent.');
+            if (mode === 'treatment') {
+                var problemKey = document.getElementById('rescheduleProblemKey').value;
+                var dentistId = document.getElementById('rescheduleDentistId').value;
+                var payload = {
+                    problemKey: problemKey,
+                    preferredDate: dateVal,
+                    preferredTime: timeVal
+                };
+                if (dentistId) payload.dentistUserId = Number(dentistId);
+
+                await apiPatch('/api/Appointments/' + id + '/reschedule-treatment', payload);
+                alert('Treatment rescheduled and assigned. Confirmation emails sent.');
+            } else {
+                const appt = await apiGet('/api/Appointments/' + id, { loading: true });
+                var dateFormatted = dateVal.split('-').reverse().join('.');
+                await apiPut('/api/Appointments/' + id + '/reschedule', {
+                    firstName: appt.firstName, lastName: appt.lastName, email: appt.email, phoneNumber: appt.phoneNumber,
+                    preferredDate: dateFormatted,
+                    preferredTime: timeVal,
+                    serviceNeeded: appt.serviceNeeded
+                });
+                alert('Rescheduled. Confirmation emails sent.');
+            }
             loadList();
             loadUnassigned();
         } catch (e) {

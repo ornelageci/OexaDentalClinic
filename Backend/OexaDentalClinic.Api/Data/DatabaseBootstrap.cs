@@ -101,10 +101,20 @@ namespace OexaDentalClinic.Api.Data
                 if (existing.Contains(appt.Id)) continue;
 
                 var keys = AppointmentSchedulingService.ParseServiceKeys(appt.ServiceNeeded);
-                foreach (var key in keys)
+                var orderedKeys = keys
+                    .Select(k => problems.TryGetValue(k, out var p) ? p : null)
+                    .Where(p => p != null)
+                    .OrderBy(p => p!.DurationMinutes > 0 ? p!.DurationMinutes : 60)
+                    .Select(p => p!.Key)
+                    .Concat(keys.Where(k => !problems.ContainsKey(k)))
+                    .ToList();
+
+                var current = appt.PreferredDateTime;
+                foreach (var key in orderedKeys)
                 {
                     var duration = 60;
-                    if (problems.TryGetValue(key, out var prob))
+                    DentalProblem? prob = null;
+                    if (problems.TryGetValue(key, out prob))
                         duration = prob.DurationMinutes > 0 ? prob.DurationMinutes : 60;
 
                     db.AppointmentTreatments.Add(new AppointmentTreatment
@@ -112,9 +122,10 @@ namespace OexaDentalClinic.Api.Data
                         AppointmentId = appt.Id,
                         ProblemKey = prob?.Key ?? key,
                         AssignedDentistUserId = keys.Count == 1 ? appt.AssignedDentistUserId : null,
-                        ScheduledStart = appt.PreferredDateTime,
+                        ScheduledStart = current,
                         DurationMinutes = duration
                     });
+                    current = current.AddMinutes(duration);
                     added++;
                 }
             }

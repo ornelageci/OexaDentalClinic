@@ -7,6 +7,7 @@ namespace OexaDentalClinic.Api.Services
         Task SendAppointmentBookedAsync(Appointment appointment);
         Task SendAppointmentAssignedAsync(Appointment appointment, User dentist);
         Task SendTreatmentLineAssignedAsync(Appointment appointment, AppointmentTreatment line, User dentist, string treatmentName);
+        Task SendTreatmentLineRescheduledAsync(Appointment appointment, AppointmentTreatment line, User dentist, string treatmentName, DateTime previousStart);
         Task SendAppointmentCancelledAsync(Appointment appointment);
         Task SendAppointmentReminderAsync(Appointment appointment);
         Task SendReceiptFinalizedAsync(Appointment appointment, Receipt receipt, IEnumerable<ReceiptMedication> medications);

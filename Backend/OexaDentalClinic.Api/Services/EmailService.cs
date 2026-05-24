@@ -25,9 +25,13 @@ namespace OexaDentalClinic.Api.Services
         public async Task SendAppointmentBookedAsync(Appointment appointment)
         {
             var problem = await FormatServiceNames(appointment.ServiceNeeded);
+            var schedule = await FormatProposedScheduleAsync(appointment.Id);
+            var scheduleLine = string.IsNullOrWhiteSpace(schedule)
+                ? ""
+                : "\nProposed schedule (shorter treatment first):\n" + schedule + "\n";
             await SendToAllPartiesAsync(appointment, null,
                 "Appointment request received - Oexa Dental Clinic",
-                $"A new appointment was booked.\nTreatments: {problem}\nDentist will be assigned by reception.");
+                $"A new appointment was booked.\nTreatments: {problem}{scheduleLine}\nDentist will be assigned by reception.");
         }
 
         public async Task SendAppointmentAssignedAsync(Appointment appointment, User dentist)
@@ -57,9 +61,19 @@ namespace OexaDentalClinic.Api.Services
         public async Task SendTreatmentLineAssignedAsync(Appointment appointment, AppointmentTreatment line, User dentist, string treatmentName)
         {
             var (appt, _) = await ResolveAppointmentContextAsync(appointment, dentist);
+            var end = line.ScheduledStart.AddMinutes(line.DurationMinutes > 0 ? line.DurationMinutes : 60);
             await SendToAllPartiesAsync(appt, dentist,
                 "Treatment assigned - Oexa Dental Clinic",
-                $"Dr. {dentist.FirstName} {dentist.LastName} was assigned for {treatmentName} at {line.ScheduledStart:g}. Other treatments may still need assignment.");
+                $"Dr. {dentist.FirstName} {dentist.LastName} was assigned for {treatmentName} at {line.ScheduledStart:HH:mm} – {end:HH:mm}. Other treatments may still need assignment.");
+        }
+
+        public async Task SendTreatmentLineRescheduledAsync(Appointment appointment, AppointmentTreatment line, User dentist, string treatmentName, DateTime previousStart)
+        {
+            var (appt, _) = await ResolveAppointmentContextAsync(appointment, dentist);
+            var end = line.ScheduledStart.AddMinutes(line.DurationMinutes > 0 ? line.DurationMinutes : 60);
+            await SendToAllPartiesAsync(appt, dentist,
+                "Treatment rescheduled - Oexa Dental Clinic",
+                $"{treatmentName} with Dr. {dentist.FirstName} {dentist.LastName} was rescheduled.\nPrevious: {previousStart:g}\nNew: {line.ScheduledStart:HH:mm} – {end:HH:mm}");
         }
 
         public async Task SendAppointmentCancelledAsync(Appointment appointment)
@@ -100,10 +114,14 @@ namespace OexaDentalClinic.Api.Services
         public async Task SendAppointmentRescheduledAsync(Appointment appointment, DateTime previousDateTime)
         {
             var (appt, dentist) = await ResolveAppointmentContextAsync(appointment, null);
+            var schedule = await FormatProposedScheduleAsync(appt.Id);
+            var scheduleText = string.IsNullOrWhiteSpace(schedule)
+                ? $"New visit start: {appt.PreferredDateTime:g}"
+                : "New schedule:\n" + schedule;
             await SendToAllPartiesAsync(appt, dentist,
                 "Appointment rescheduled - Oexa Dental Clinic",
                 AppendDentistToMessage(
-                    $"Your appointment was rescheduled.\nPrevious time: {previousDateTime:g}\nNew time: {appt.PreferredDateTime:g}",
+                    $"Your appointment was rescheduled.\nPrevious visit start: {previousDateTime:g}\n{scheduleText}",
                     dentist));
         }
 
@@ -159,14 +177,18 @@ namespace OexaDentalClinic.Api.Services
                 ? FormatDentistLine(dentist)
                 : await FormatDentistLineFromLinesAsync(appt.Id);
 
+            var scheduleBlock = await FormatScheduleBlockForEmailAsync(appt.Id);
+            var timeLine = string.IsNullOrWhiteSpace(scheduleBlock)
+                ? $"Date & time: {appt.PreferredDateTime:g}\n"
+                : scheduleBlock;
+
             var text = $"""
                 {bodyText}
 
                 Patient: {appt.FirstName} {appt.LastName}
                 Email: {appt.Email}
                 Treatments: {problem}
-                {dentistLine}Date & time: {appt.PreferredDateTime:g}
-                Status: {appt.Status}
+                {dentistLine}{timeLine}Status: {appt.Status}
 
                 Oexa Dental Clinic
                 Tirane Delijorgji | WhatsApp: +355 69 68 67 665
@@ -261,6 +283,41 @@ namespace OexaDentalClinic.Api.Services
             return "Dentists:\n" + await FormatTreatmentScheduleAsync(appointmentId) + "\n";
         }
 
+        private async Task<string> FormatProposedScheduleAsync(int appointmentId)
+        {
+            var lines = await _db.AppointmentTreatments.AsNoTracking()
+                .Where(t => t.AppointmentId == appointmentId)
+                .ToListAsync();
+            if (lines.Count == 0) return "";
+
+            var names = await DentalProblemLookup.NameByKeyAsync(_db);
+            var users = await _db.Users.AsNoTracking().Where(u => u.Role == "Dentist").ToDictionaryAsync(u => u.Id);
+
+            return string.Join("\n", AppointmentSchedulingService.OrderLinesShorterFirst(lines).Select(l =>
+            {
+                var treatment = names.GetValueOrDefault(l.ProblemKey, l.ProblemKey);
+                var end = l.ScheduledStart.AddMinutes(l.DurationMinutes > 0 ? l.DurationMinutes : 60);
+                var dr = l.AssignedDentistUserId.HasValue && users.TryGetValue(l.AssignedDentistUserId.Value, out var d)
+                    ? $"Dr. {d.FirstName} {d.LastName}"
+                    : "Dentist TBD";
+                return $"- {treatment}: {l.ScheduledStart:HH:mm} – {end:HH:mm} ({dr})";
+            }));
+        }
+
+        private async Task<string> FormatScheduleBlockForEmailAsync(int appointmentId)
+        {
+            var lines = await _db.AppointmentTreatments.AsNoTracking()
+                .Where(t => t.AppointmentId == appointmentId)
+                .ToListAsync();
+            if (lines.Count <= 1)
+                return lines.Count == 1
+                    ? $"Date & time: {lines[0].ScheduledStart:g}\n"
+                    : "";
+
+            var schedule = await FormatProposedScheduleAsync(appointmentId);
+            return string.IsNullOrWhiteSpace(schedule) ? "" : "Schedule:\n" + schedule + "\n";
+        }
+
         private async Task<string> FormatTreatmentScheduleAsync(int appointmentId)
         {
             var lines = await _db.AppointmentTreatments.AsNoTracking()
@@ -269,12 +326,13 @@ namespace OexaDentalClinic.Api.Services
             var users = await _db.Users.AsNoTracking().Where(u => u.Role == "Dentist").ToDictionaryAsync(u => u.Id);
             var names = await DentalProblemLookup.NameByKeyAsync(_db);
 
-            return string.Join("\n", lines.Select(l =>
+            return string.Join("\n", AppointmentSchedulingService.OrderLinesShorterFirst(lines).Select(l =>
             {
                 users.TryGetValue(l.AssignedDentistUserId!.Value, out var d);
                 var treatment = names.GetValueOrDefault(l.ProblemKey, l.ProblemKey);
                 var dr = d != null ? $"Dr. {d.FirstName} {d.LastName}" : "Dentist";
-                return $"- {treatment}: {dr} at {l.ScheduledStart:g}";
+                var end = l.ScheduledStart.AddMinutes(l.DurationMinutes > 0 ? l.DurationMinutes : 60);
+                return $"- {treatment}: {dr} at {l.ScheduledStart:HH:mm} – {end:HH:mm}";
             }));
         }
 

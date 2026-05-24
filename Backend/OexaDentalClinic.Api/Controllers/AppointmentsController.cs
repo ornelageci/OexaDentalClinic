@@ -93,19 +93,29 @@ namespace OexaDentalClinic.Api.Controllers
                 select new { t, a }
             ).ToListAsync();
 
-            return Ok(rows.Select(r => new
+            var grouped = rows.GroupBy(r => r.a.Id).ToDictionary(g => g.Key, g => g.Select(x => x.t).ToList());
+
+            return Ok(rows.Select(r =>
             {
-                appointmentId = r.a.Id,
-                treatmentLineId = r.t.Id,
-                r.a.FirstName,
-                r.a.LastName,
-                r.a.Email,
-                preferredDateTime = r.a.PreferredDateTime,
-                scheduledStart = r.t.ScheduledStart,
-                problemKey = r.t.ProblemKey,
-                problemName = problems.GetValueOrDefault(r.t.ProblemKey, r.t.ProblemKey),
-                durationMinutes = r.t.DurationMinutes,
-                r.a.Status
+                grouped.TryGetValue(r.a.Id, out var apptLines);
+                apptLines ??= new List<AppointmentTreatment>();
+                var (windowStart, windowEnd) = AppointmentSchedulingService.GetBookingWindow(r.a, apptLines);
+                return new
+                {
+                    appointmentId = r.a.Id,
+                    treatmentLineId = r.t.Id,
+                    r.a.FirstName,
+                    r.a.LastName,
+                    r.a.Email,
+                    preferredDateTime = r.a.PreferredDateTime,
+                    windowStart,
+                    windowEnd,
+                    scheduledStart = r.t.ScheduledStart,
+                    problemKey = r.t.ProblemKey,
+                    problemName = problems.GetValueOrDefault(r.t.ProblemKey, r.t.ProblemKey),
+                    durationMinutes = r.t.DurationMinutes,
+                    r.a.Status
+                };
             }));
         }
 
@@ -218,6 +228,30 @@ namespace OexaDentalClinic.Api.Controllers
             catch (Exception ex)
             {
                 return StatusCode(500, new { error = "Could not load time slots.", detail = ex.Message });
+            }
+        }
+
+        [HttpGet("dentist-slots")]
+        public async Task<IActionResult> GetDentistSlots(
+            [FromQuery] int dentistId,
+            [FromQuery] string date,
+            [FromQuery] int durationMinutes,
+            [FromQuery] int appointmentId,
+            [FromQuery] string? problemKey,
+            [FromQuery] int? treatmentLineId)
+        {
+            if (dentistId <= 0 || string.IsNullOrWhiteSpace(date) || appointmentId <= 0)
+                return BadRequest(new { error = "dentistId, date, and appointmentId are required." });
+
+            try
+            {
+                var slots = await _scheduling.GetDentistTimeSlotsAsync(
+                    dentistId, date.Trim(), durationMinutes, appointmentId, treatmentLineId);
+                return Ok(slots);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { error = ex.Message });
             }
         }
 
@@ -478,7 +512,9 @@ namespace OexaDentalClinic.Api.Controllers
             if (problem.DentistCategoryKey != dentist.DentistServiceKey)
                 return BadRequest(new { error = "This dentist does not perform this treatment." });
 
+            var (windowStart, windowEnd) = AppointmentSchedulingService.GetBookingWindow(appt, lines);
             var start = line.ScheduledStart;
+
             if (!string.IsNullOrWhiteSpace(dto.PreferredDate) && !string.IsNullOrWhiteSpace(dto.PreferredTime))
             {
                 var parsed = ParseDateTime(dto.PreferredDate.Trim(), dto.PreferredTime.Trim());
@@ -487,21 +523,44 @@ namespace OexaDentalClinic.Api.Controllers
                 if (parsed.Value < DateTime.Now)
                     return BadRequest(new { error = "Cannot schedule in the past." });
                 start = parsed.Value;
-                line.ScheduledStart = start;
+            }
+            else
+            {
+                if (!await _scheduling.IsDentistAvailableForLineAsync(
+                        dentist.Id, start, line.DurationMinutes, id, line.Id) ||
+                    !AppointmentSchedulingService.IsPatientSlotFree(start, line.DurationMinutes, lines, line.Id))
+                {
+                    var auto = await _scheduling.FindEarliestAvailableStartAsync(
+                        dentist.Id, line, lines, windowStart, windowEnd, id);
+                    if (auto.HasValue)
+                        start = auto.Value;
+                }
             }
 
+            line.ScheduledStart = start;
+
             if (!await _scheduling.IsDentistAvailableForLineAsync(
-                    dentist.Id, start, line.DurationMinutes, id, line.Id))
+                    dentist.Id, start, line.DurationMinutes, id, line.Id) ||
+                !AppointmentSchedulingService.IsPatientSlotFree(start, line.DurationMinutes, lines, line.Id))
             {
                 return BadRequest(new
                 {
-                    error = "Dentist is busy at this time. Choose another time for this treatment only.",
+                    error = "Dentist is busy in the selected time slot. Use Reschedule to pick another time within the patient's window.",
                     needsReschedule = true,
-                    problemKey = line.ProblemKey
+                    problemKey = line.ProblemKey,
+                    appointmentId = id,
+                    treatmentLineId = line.Id,
+                    dentistUserId = dentist.Id,
+                    durationMinutes = line.DurationMinutes,
+                    windowStart,
+                    windowEnd,
+                    suggestedDate = windowStart.ToString("yyyy-MM-dd"),
+                    suggestedTime = start.ToString("HH:mm")
                 });
             }
 
             line.AssignedDentistUserId = dentist.Id;
+            _scheduling.RecalculateUnassignedLineStarts(lines, windowStart);
             await SyncAppointmentHeaderAsync(appt, lines);
             await _db.SaveChangesAsync();
 
@@ -518,6 +577,84 @@ namespace OexaDentalClinic.Api.Controllers
                 line.AssignedDentistUserId,
                 line.ScheduledStart,
                 allTreatmentsAssigned = allAssigned
+            });
+        }
+
+        [HttpPatch("{id:int}/reschedule-treatment")]
+        public async Task<IActionResult> RescheduleTreatment(int id, [FromBody] RescheduleTreatmentDto dto)
+        {
+            var appt = await _db.Appointments.FindAsync(id);
+            if (appt == null) return NotFound();
+
+            if (appt.Status != "Booked")
+                return BadRequest(new { error = "Can only reschedule booked appointments." });
+
+            await EnsureTreatmentLinesAsync(appt);
+            var lines = await _db.AppointmentTreatments.Where(t => t.AppointmentId == id).ToListAsync();
+            var problemKey = dto.ProblemKey.Trim();
+            var line = lines.FirstOrDefault(t =>
+                string.Equals(t.ProblemKey, problemKey, StringComparison.OrdinalIgnoreCase));
+            if (line == null)
+                return BadRequest(new { error = "Treatment not found on this appointment." });
+
+            var parsed = ParseDateTime(dto.PreferredDate.Trim(), dto.PreferredTime.Trim());
+            if (parsed == null)
+                return BadRequest(new { error = "Invalid date or time." });
+            if (parsed.Value < DateTime.Now)
+                return BadRequest(new { error = "Cannot schedule in the past." });
+
+            var dentistId = dto.DentistUserId ?? line.AssignedDentistUserId;
+            if (!dentistId.HasValue)
+                return BadRequest(new { error = "Select a dentist before rescheduling this treatment." });
+
+            var dentist = await _db.Users.FindAsync(dentistId.Value);
+            if (dentist == null || dentist.Role != "Dentist")
+                return BadRequest(new { error = "Invalid dentist." });
+
+            var allProblems = await DentalProblemLookup.LoadAllAsync(_db);
+            var problem = DentalProblemLookup.Find(allProblems, line.ProblemKey);
+            if (problem == null)
+                return BadRequest(new { error = "Invalid treatment." });
+
+            if (problem.DentistCategoryKey != dentist.DentistServiceKey)
+                return BadRequest(new { error = "This dentist does not perform this treatment." });
+
+            var (windowStart, windowEnd) = AppointmentSchedulingService.GetBookingWindow(appt, lines);
+            var start = parsed.Value;
+            var duration = AppointmentSchedulingService.LineDurationMinutes(line);
+            if (start < windowStart || start.AddMinutes(duration) > windowEnd)
+                return BadRequest(new { error = "Time must stay within the patient's booked window (" + windowStart.ToString("g") + " – " + windowEnd.ToString("g") + ")." });
+
+            var previousStart = line.ScheduledStart;
+            line.ScheduledStart = start;
+
+            if (!AppointmentSchedulingService.IsPatientSlotFree(start, line.DurationMinutes, lines, line.Id))
+            {
+                line.ScheduledStart = previousStart;
+                return BadRequest(new { error = "This time overlaps another treatment for the same patient." });
+            }
+
+            if (!await _scheduling.IsDentistAvailableForLineAsync(
+                    dentist.Id, start, line.DurationMinutes, id, line.Id))
+            {
+                line.ScheduledStart = previousStart;
+                return BadRequest(new { error = "Dentist is not available at this time." });
+            }
+
+            line.AssignedDentistUserId = dentist.Id;
+            _scheduling.RecalculateUnassignedLineStarts(lines, windowStart);
+            await SyncAppointmentHeaderAsync(appt, lines);
+            await _db.SaveChangesAsync();
+
+            await _email.SendTreatmentLineRescheduledAsync(appt, line, dentist, problem.Name, previousStart);
+
+            return Ok(new
+            {
+                appointmentId = id,
+                line.ProblemKey,
+                line.AssignedDentistUserId,
+                line.ScheduledStart,
+                previousStart
             });
         }
 
@@ -544,8 +681,13 @@ namespace OexaDentalClinic.Api.Controllers
             appt.Status = "Booked";
 
             var treatmentLines = await _db.AppointmentTreatments.Where(t => t.AppointmentId == id).ToListAsync();
-            foreach (var line in treatmentLines)
-                line.ScheduledStart = preferredDateTime.Value;
+            if (treatmentLines.Count > 0)
+                _scheduling.ApplySequentialSchedule(treatmentLines, preferredDateTime.Value);
+            else
+            {
+                var problems = await _scheduling.GetProblemsForKeysAsync(serviceKeys);
+                await _scheduling.CreateTreatmentLinesAsync(id, problems, preferredDateTime.Value);
+            }
 
             await _db.SaveChangesAsync();
             await _email.SendAppointmentRescheduledAsync(appt, previousDateTime);
@@ -568,20 +710,24 @@ namespace OexaDentalClinic.Api.Controllers
 
             var keys = AppointmentSchedulingService.ParseServiceKeys(appt.ServiceNeeded);
             var allProblems = await DentalProblemLookup.LoadAllAsync(_db);
+            var created = new List<AppointmentTreatment>();
             foreach (var key in keys)
             {
                 var problem = DentalProblemLookup.Find(allProblems, key);
                 var duration = problem?.DurationMinutes > 0 ? problem!.DurationMinutes : 60;
-                _db.AppointmentTreatments.Add(new AppointmentTreatment
+                var line = new AppointmentTreatment
                 {
                     AppointmentId = appt.Id,
                     ProblemKey = problem?.Key ?? key,
                     ScheduledStart = appt.PreferredDateTime,
                     DurationMinutes = duration,
                     AssignedDentistUserId = keys.Count == 1 ? appt.AssignedDentistUserId : null
-                });
+                };
+                created.Add(line);
+                _db.AppointmentTreatments.Add(line);
             }
 
+            _scheduling.ApplySequentialSchedule(created, appt.PreferredDateTime);
             await _db.SaveChangesAsync();
         }
 
@@ -598,11 +744,8 @@ namespace OexaDentalClinic.Api.Controllers
             else
                 appt.AssignedDentistUserId = null;
 
-            if (lines.Count > 0)
-            {
-                var earliest = lines.Min(t => t.ScheduledStart);
-                appt.PreferredDateTime = earliest;
-            }
+            if (lines.Count == 1)
+                appt.PreferredDateTime = lines[0].ScheduledStart;
         }
 
         private static string FormatServiceNames(string serviceNeeded, Dictionary<string, string> problems)

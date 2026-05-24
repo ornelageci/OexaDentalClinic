@@ -21,7 +21,7 @@
                     <div class="card portal-card">
                         <div class="card-body">
                             <h4>Assign dentist (per treatment)</h4>
-                            <p class="small text-muted mb-2">Each treatment can have its own dentist and time. If a dentist is busy, set a new time for that treatment only and assign again.</p>
+                            <p class="small text-muted mb-2">Treatments are scheduled back-to-back within the patient's time window (shorter treatment first). If a dentist is busy, click Reschedule to pick an available time.</p>
                             <div class="table-responsive mb-3">
                                 <table class="table table-sm">
                                     <thead><tr><th>ID</th><th>Patient</th><th>Treatment</th><th>Time</th><th>Assign</th></tr></thead>
@@ -51,14 +51,25 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-lg-12">
+                <div class="col-lg-12" id="rescheduleSection">
                     <div class="card portal-card">
                         <div class="card-body">
                             <h4>Reschedule / Cancel</h4>
+                            <p class="small text-muted" id="rescheduleContext">Reschedule a whole appointment, or use Reschedule on a treatment row to adjust one dentist's time.</p>
+                            <input type="hidden" id="rescheduleMode" value="appointment">
+                            <input type="hidden" id="rescheduleProblemKey" value="">
+                            <input type="hidden" id="rescheduleTreatmentLineId" value="">
+                            <input type="hidden" id="rescheduleDentistId" value="">
+                            <input type="hidden" id="rescheduleDuration" value="">
                             <div class="row g-2">
                                 <div class="col-md-2"><input class="form-control" id="actionId" placeholder="ID"></div>
                                 <div class="col-md-3"><input class="form-control" id="newDate" type="date"></div>
-                                <div class="col-md-2"><input class="form-control" id="newTime" placeholder="HH:mm"></div>
+                                <div class="col-md-3">
+                                    <select class="form-select" id="newTime" disabled>
+                                        <option value="">Select date and dentist first</option>
+                                    </select>
+                                    <div class="small text-muted mt-1" id="slotHint"></div>
+                                </div>
                                 <div class="col-md-2"><button class="btn btn-primary" id="rescheduleBtn">Reschedule</button></div>
                                 <div class="col-md-2"><button class="btn btn-outline-danger" id="cancelBtn">Cancel</button></div>
                             </div>
