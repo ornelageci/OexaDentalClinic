@@ -49,9 +49,21 @@
     function renderDentistBody(d) {
         var appt = d.appointment || d.Appointment || {};
         var notes = pick(appt, 'additionalNotes', 'AdditionalNotes');
+        var when = pick(appt, 'displayDateTime', 'DisplayDateTime') ||
+            pick(appt, 'preferredDateTime', 'PreferredDateTime');
+        var duration = pick(appt, 'displayDurationMinutes', 'DisplayDurationMinutes');
+        var timeLabel = formatDateTime(when);
+        if (when && duration) {
+            var start = new Date(when);
+            if (!isNaN(start.getTime())) {
+                var end = new Date(start.getTime() + duration * 60000);
+                timeLabel = start.toLocaleString() + ' – ' +
+                    end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            }
+        }
         return '<dl class="row mb-0">' +
-            row('Date & time', escapeHtml(formatDateTime(pick(appt, 'preferredDateTime', 'PreferredDateTime')))) +
-            row('Treatments', formatTreatmentsList(d.treatments || d.Treatments)) +
+            row('Date & time', escapeHtml(timeLabel)) +
+            row('Your treatment', formatTreatmentsList(d.treatments || d.Treatments)) +
             row('Message', notes ? escapeHtml(notes) : null) +
             '</dl>';
     }
@@ -165,7 +177,8 @@
         return html;
     }
 
-    window.showAppointmentInfo = async function(appointmentId, role) {
+    window.showAppointmentInfo = async function(appointmentId, role, options) {
+        options = options || {};
         ensureInfoModal();
         var modalEl = document.getElementById('apptInfoModal');
         var bodyEl = document.getElementById('apptInfoModalBody');
@@ -177,7 +190,11 @@
         modal.show();
 
         try {
-            var d = await apiGet('/api/Appointments/' + appointmentId + '/details', { loading: true });
+            var url = '/api/Appointments/' + appointmentId + '/details';
+            if (role === 'dentist' && options.dentistId) {
+                url += '?dentistId=' + encodeURIComponent(options.dentistId);
+            }
+            var d = await apiGet(url, { loading: true });
             if (role === 'dentist') {
                 titleEl.textContent = 'Visit info #' + appointmentId;
                 bodyEl.innerHTML = renderDentistBody(d);

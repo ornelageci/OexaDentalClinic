@@ -158,6 +158,66 @@ namespace OexaDentalClinic.Api.Controllers
 
             var result = await query.OrderBy(a => a.PreferredDateTime).ToListAsync();
 
+            if (dentistId.HasValue)
+            {
+                var did = dentistId.Value;
+                var apptIds = result.Select(a => a.Id).ToList();
+                var myLines = await _db.AppointmentTreatments
+                    .Where(t => apptIds.Contains(t.AppointmentId) && t.AssignedDentistUserId == did)
+                    .ToListAsync();
+                var linesByAppt = myLines.GroupBy(t => t.AppointmentId).ToDictionary(g => g.Key, g => g.ToList());
+                var problemNames = await DentalProblemLookup.NameByKeyAsync(_db);
+
+                var enriched = result.Select(a =>
+                {
+                    linesByAppt.TryGetValue(a.Id, out var lines);
+                    lines ??= new List<AppointmentTreatment>();
+
+                    DateTime displayTime = a.PreferredDateTime;
+                    string? myTreatment = null;
+                    int? myDuration = null;
+
+                    if (lines.Count > 0)
+                    {
+                        var primary = lines.OrderBy(t => t.ScheduledStart).First();
+                        displayTime = primary.ScheduledStart;
+                        myDuration = AppointmentSchedulingService.LineDurationMinutes(primary);
+                        myTreatment = problemNames.GetValueOrDefault(primary.ProblemKey, primary.ProblemKey);
+                        if (lines.Count > 1)
+                        {
+                            myTreatment = string.Join(", ", lines
+                                .OrderBy(t => t.ScheduledStart)
+                                .Select(t => problemNames.GetValueOrDefault(t.ProblemKey, t.ProblemKey)));
+                        }
+                    }
+                    else if (a.AssignedDentistUserId == did)
+                    {
+                        var keys = AppointmentSchedulingService.ParseServiceKeys(a.ServiceNeeded);
+                        myTreatment = string.Join(", ", keys.Select(k => problemNames.GetValueOrDefault(k, k)));
+                    }
+
+                    return new
+                    {
+                        a.Id,
+                        a.FirstName,
+                        a.LastName,
+                        a.Email,
+                        a.PhoneNumber,
+                        a.PreferredDateTime,
+                        displayDateTime = displayTime,
+                        myScheduledStart = lines.Count > 0 ? displayTime : (DateTime?)null,
+                        myDurationMinutes = myDuration,
+                        myTreatmentName = myTreatment,
+                        a.ServiceNeeded,
+                        a.AdditionalNotes,
+                        a.Status,
+                        a.IsSpecialAppointment,
+                        a.AssignedDentistUserId
+                    };
+                });
+                return Ok(enriched);
+            }
+
             if (!string.IsNullOrWhiteSpace(email))
             {
                 var apptIds = result.Select(a => a.Id).ToList();
@@ -286,12 +346,44 @@ namespace OexaDentalClinic.Api.Controllers
         }
 
         [HttpGet("{id:int}/details")]
-        public async Task<IActionResult> GetDetails(int id)
+        public async Task<IActionResult> GetDetails(int id, [FromQuery] int? dentistId)
         {
             var appt = await _db.Appointments.FindAsync(id);
             if (appt == null) return NotFound();
 
-            var keys = AppointmentSchedulingService.ParseServiceKeys(appt.ServiceNeeded);
+            var treatmentLines = await _db.AppointmentTreatments
+                .AsNoTracking()
+                .Where(t => t.AppointmentId == id)
+                .ToListAsync();
+
+            List<string> keys;
+            DateTime displayDateTime = appt.PreferredDateTime;
+            int? displayDuration = null;
+
+            if (dentistId.HasValue)
+            {
+                var myLines = treatmentLines
+                    .Where(t => t.AssignedDentistUserId == dentistId.Value)
+                    .OrderBy(t => t.ScheduledStart)
+                    .ToList();
+
+                if (myLines.Count > 0)
+                {
+                    keys = myLines.Select(t => t.ProblemKey).ToList();
+                    displayDateTime = myLines[0].ScheduledStart;
+                    displayDuration = AppointmentSchedulingService.LineDurationMinutes(myLines[0]);
+                    if (myLines.Count > 1)
+                        displayDuration = myLines.Sum(AppointmentSchedulingService.LineDurationMinutes);
+                }
+                else if (appt.AssignedDentistUserId == dentistId.Value)
+                    keys = AppointmentSchedulingService.ParseServiceKeys(appt.ServiceNeeded);
+                else
+                    keys = new List<string>();
+            }
+            else
+            {
+                keys = AppointmentSchedulingService.ParseServiceKeys(appt.ServiceNeeded);
+            }
             var allProblems = await _db.DentalProblems.AsNoTracking().ToListAsync();
             var allPromos = await _db.Promotions
                 .Where(p => p.IsActive && p.ProblemKey != null)
@@ -370,6 +462,8 @@ namespace OexaDentalClinic.Api.Controllers
                     appt.Email,
                     appt.PhoneNumber,
                     appt.PreferredDateTime,
+                    displayDateTime,
+                    displayDurationMinutes = displayDuration,
                     appt.ServiceNeeded,
                     appt.AdditionalNotes,
                     appt.Status,
