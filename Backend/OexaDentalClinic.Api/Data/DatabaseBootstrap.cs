@@ -75,8 +75,7 @@ namespace OexaDentalClinic.Api.Data
                         `AssignedDentistUserId` int NULL,
                         `ScheduledStart` datetime(6) NOT NULL,
                         `DurationMinutes` int NOT NULL,
-                        PRIMARY KEY (`Id`),
-                        KEY `IX_AppointmentTreatments_AppointmentId` (`AppointmentId`)
+                        PRIMARY KEY (`Id`)
                     )
                     """);
                 db.Database.ExecuteSqlRaw(

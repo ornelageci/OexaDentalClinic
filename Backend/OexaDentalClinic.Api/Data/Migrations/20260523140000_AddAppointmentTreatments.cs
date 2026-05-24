@@ -1,11 +1,15 @@
+﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
+using MySql.EntityFrameworkCore.Metadata;
 
 #nullable disable
 
 namespace OexaDentalClinic.Api.Data.Migrations
 {
+    /// <inheritdoc />
     public partial class AddAppointmentTreatments : Migration
     {
+        /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.CreateTable(
@@ -13,7 +17,7 @@ namespace OexaDentalClinic.Api.Data.Migrations
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("MySQL:ValueGenerationStrategy", "IdentityColumn"),
+                        .Annotation("MySQL:ValueGenerationStrategy", MySQLValueGenerationStrategy.IdentityColumn),
                     AppointmentId = table.Column<int>(type: "int", nullable: false),
                     ProblemKey = table.Column<string>(type: "varchar(80)", maxLength: 80, nullable: false),
                     AssignedDentistUserId = table.Column<int>(type: "int", nullable: true),
@@ -23,17 +27,15 @@ namespace OexaDentalClinic.Api.Data.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_AppointmentTreatments", x => x.Id);
-                });
-
-            migrationBuilder.CreateIndex(
-                name: "IX_AppointmentTreatments_AppointmentId",
-                table: "AppointmentTreatments",
-                column: "AppointmentId");
+                })
+                .Annotation("MySQL:Charset", "utf8mb4");
         }
 
+        /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropTable(name: "AppointmentTreatments");
+            migrationBuilder.DropTable(
+                name: "AppointmentTreatments");
         }
     }
 }
