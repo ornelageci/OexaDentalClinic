@@ -118,8 +118,20 @@
             return html;
         }
 
+        var treatments = receipt.treatments || receipt.Treatments || [];
+        var subtotal = pick(receipt, 'subtotalBeforeVat', 'SubtotalBeforeVat');
+        var vat = pick(receipt, 'vatAmount', 'VatAmount');
         var total = pick(receipt, 'totalAmount', 'TotalAmount');
         html += '<p class="mb-2"><strong>Receipt #' + escapeHtml(number) + '</strong> · <span class="badge bg-success">Finalized</span></p>';
+        if (treatments.length) {
+            html += '<table class="table table-sm mb-2"><thead><tr><th>Treatment</th><th class="text-end">Price (EUR)</th></tr></thead><tbody>';
+            treatments.forEach(function(t) {
+                var price = pick(t, 'unitPrice', 'UnitPrice');
+                html += '<tr><td>' + escapeHtml(pick(t, 'name', 'Name')) + '</td>' +
+                    '<td class="text-end">' + (price != null ? price : '—') + '</td></tr>';
+            });
+            html += '</tbody></table>';
+        }
         if (meds.length) {
             html += '<table class="table table-sm mb-2"><thead><tr><th>Medication</th><th class="text-end">Price (EUR)</th></tr></thead><tbody>';
             meds.forEach(function(m) {
@@ -129,7 +141,10 @@
             });
             html += '</tbody></table>';
         }
-        html += '<p class="mb-0"><strong>Total: ' + (total != null ? total + ' EUR' : '—') + '</strong></p>';
+        html += '<div class="small bg-light rounded p-2 mb-0">' +
+            '<div class="d-flex justify-content-between"><span>Subtotal (para TVSH)</span><span>' + (subtotal != null ? subtotal + ' EUR' : '—') + '</span></div>' +
+            '<div class="d-flex justify-content-between"><span>TVSH (20%)</span><span>' + (vat != null ? vat + ' EUR' : '—') + '</span></div>' +
+            '<div class="d-flex justify-content-between fw-bold"><span>Total (pas TVSH)</span><span>' + (total != null ? total + ' EUR' : '—') + '</span></div></div>';
         return html;
     }
 

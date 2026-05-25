@@ -314,7 +314,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 html += '<h6 class="mb-2">Treatments (EUR)</h6>';
                 html += '<table class="table table-sm mb-3"><thead><tr><th>Treatment</th><th>Dentist</th><th class="text-end">Price (EUR)</th></tr></thead><tbody>';
                 treatments.forEach(function(t) {
-                    var lineId = receiptPick(t, 'appointmentTreatmentId', 'AppointmentTreatmentId');
+                    var lineId = receiptPick(t, 'appointmentTreatmentId', 'AppointmentTreatmentId') ||
+                        receiptPick(t, 'id', 'Id');
                     var suggested = receiptPick(t, 'suggestedPriceEur', 'SuggestedPriceEur') ||
                         receiptPick(t, 'unitPrice', 'UnitPrice') || '';
                     var name = receiptPick(t, 'name', 'Name');
@@ -327,15 +328,24 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             if (medications.length) {
-                html += '<h6 class="mb-2">Medications (EUR)</h6>';
-                html += '<table class="table table-sm mb-3"><thead><tr><th>Medication</th><th>Dentist</th><th class="text-end">Price (EUR)</th></tr></thead><tbody>';
-                medications.forEach(function(m) {
-                    var dentist = receiptPick(m, 'dentistName', 'DentistName') || '—';
-                    html += '<tr><td>' + receiptPick(m, 'name', 'Name') + '</td><td class="small">' + dentist + '</td><td class="text-end">' +
-                        '<input type="number" step="0.01" min="0" class="form-control form-control-sm med-price text-end" ' +
-                        'data-id="' + receiptPick(m, 'id', 'Id') + '" value="' + (receiptPick(m, 'unitPrice', 'UnitPrice') || '') + '" placeholder="EUR"></td></tr>';
+                html += '<h6 class="mb-2">Medications from all dentists (EUR)</h6>';
+                var byDentist = data.medicationsByDentist || data.MedicationsByDentist;
+                if (!byDentist || !byDentist.length) {
+                    byDentist = [{ dentistName: 'All', medications: medications }];
+                }
+                byDentist.forEach(function(group) {
+                    var dName = receiptPick(group, 'dentistName', 'DentistName') || 'Dentist';
+                    var groupMeds = group.medications || group.Medications || [];
+                    if (!groupMeds.length) return;
+                    html += '<p class="small fw-semibold mb-1 mt-2">' + dName + '</p>';
+                    html += '<table class="table table-sm mb-2"><thead><tr><th>Medication</th><th class="text-end">Price (EUR)</th></tr></thead><tbody>';
+                    groupMeds.forEach(function(m) {
+                        html += '<tr><td>' + receiptPick(m, 'name', 'Name') + '</td><td class="text-end">' +
+                            '<input type="number" step="0.01" min="0" class="form-control form-control-sm med-price text-end" ' +
+                            'data-id="' + receiptPick(m, 'id', 'Id') + '" value="' + (receiptPick(m, 'unitPrice', 'UnitPrice') || '') + '" placeholder="EUR"></td></tr>';
+                    });
+                    html += '</tbody></table>';
                 });
-                html += '</tbody></table>';
             }
 
             if (!receipt) {
@@ -343,8 +353,31 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
 
+            html += '<div id="receiptVatPreview" class="alert alert-light border mb-3 small">Enter prices to see TVSH 20% totals.</div>';
             html += '<button type="button" class="btn btn-primary" id="saveReceiptPrices">Finalize receipt (EUR)</button>';
             box.innerHTML = html;
+
+            function updateVatPreview() {
+                var sub = 0;
+                box.querySelectorAll('.treatment-price, .med-price').forEach(function(inp) {
+                    var v = Number(inp.value);
+                    if (!isNaN(v) && v >= 0) sub += v;
+                });
+                var vat = Math.round(sub * 0.2 * 100) / 100;
+                var total = Math.round((sub + vat) * 100) / 100;
+                var el = document.getElementById('receiptVatPreview');
+                if (el) {
+                    el.innerHTML = '<div class="d-flex justify-content-between"><span>Subtotal (para TVSH)</span><strong>' + sub.toFixed(2) + ' EUR</strong></div>' +
+                        '<div class="d-flex justify-content-between"><span>TVSH (20%)</span><strong>' + vat.toFixed(2) + ' EUR</strong></div>' +
+                        '<div class="d-flex justify-content-between"><span>Total (pas TVSH)</span><strong>' + total.toFixed(2) + ' EUR</strong></div>';
+                }
+            }
+
+            box.querySelectorAll('.treatment-price, .med-price').forEach(function(inp) {
+                inp.addEventListener('input', updateVatPreview);
+            });
+            updateVatPreview();
+
             document.getElementById('saveReceiptPrices').addEventListener('click', async function() {
                 var medicationLines = [];
                 var treatmentLines = [];
@@ -361,12 +394,17 @@ document.addEventListener('DOMContentLoaded', function() {
                     });
                 });
                 try {
-                    await apiPut('/api/Receipts/' + receipt.id + '/prices', {
+                    var data = await apiPut('/api/Receipts/' + receipt.id + '/prices', {
                         medicationLines: medicationLines,
                         treatmentLines: treatmentLines
                     });
-                    alert('Receipt finalized. Emails sent.');
-                    box.innerHTML = '<p class="text-success">Receipt saved.</p>';
+                    var sub = data.subtotalBeforeVat != null ? data.subtotalBeforeVat : (data.receipt && data.receipt.subtotalBeforeVat);
+                    var vat = data.vatAmount != null ? data.vatAmount : (data.receipt && data.receipt.vatAmount);
+                    var tot = data.totalAfterVat != null ? data.totalAfterVat : (data.receipt && data.receipt.totalAmount);
+                    alert('Receipt finalized.\nPara TVSH: ' + (sub != null ? Number(sub).toFixed(2) : '') +
+                        ' EUR\nTVSH: ' + (vat != null ? Number(vat).toFixed(2) : '') +
+                        ' EUR\nTotal: ' + (tot != null ? Number(tot).toFixed(2) : '') + ' EUR');
+                    box.innerHTML = '<p class="text-success">Receipt saved with TVSH applied.</p>';
                 } catch (e) {
                     alert(e.message || 'Could not save receipt');
                 }

@@ -1,6 +1,5 @@
 document.addEventListener('DOMContentLoaded', function() {
     if (!requireStaffRole('admin')) return;
-    document.getElementById('logoutBtn').addEventListener('click', staffLogout);
     const body = document.getElementById('tableBody');
     let problemNames = {};
 

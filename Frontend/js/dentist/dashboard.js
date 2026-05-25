@@ -69,11 +69,25 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
             });
             body.querySelectorAll('[data-receipt]').forEach(function(btn) {
-                btn.addEventListener('click', function() {
+                btn.addEventListener('click', async function() {
                     selectedApptId = btn.getAttribute('data-receipt');
                     document.getElementById('treatmentApptId').value = selectedApptId;
                     medList.innerHTML = '';
-                    addMedRow('');
+                    try {
+                        var data = await apiGet('/api/Receipts/' + selectedApptId);
+                        var meds = data.medications || data.Medications || [];
+                        var mine = meds.filter(function(m) {
+                            var did = pick(m, 'submittedByDentistUserId', 'SubmittedByDentistUserId');
+                            return did === user.id;
+                        });
+                        if (mine.length) {
+                            mine.forEach(function(m) { addMedRow(pick(m, 'name', 'Name')); });
+                        } else {
+                            addMedRow('');
+                        }
+                    } catch (e) {
+                        addMedRow('');
+                    }
                 });
             });
             body.querySelectorAll('[data-open]').forEach(function(btn) {

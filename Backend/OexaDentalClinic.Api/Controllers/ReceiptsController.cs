@@ -13,11 +13,13 @@ namespace OexaDentalClinic.Api.Controllers
     {
         private readonly AppDbContext _db;
         private readonly IEmailService _email;
+        private readonly ReceiptSyncService _receiptSync;
 
-        public ReceiptsController(AppDbContext db, IEmailService email)
+        public ReceiptsController(AppDbContext db, IEmailService email, ReceiptSyncService receiptSync)
         {
             _db = db;
             _email = email;
+            _receiptSync = receiptSync;
         }
 
         [HttpGet("pending")]
@@ -40,9 +42,9 @@ namespace OexaDentalClinic.Api.Controllers
             var receipt = await _db.Receipts.FirstOrDefaultAsync(r => r.AppointmentId == appointmentId);
             if (receipt == null)
             {
-                var hasLines = await _db.AppointmentTreatments.AnyAsync(t => t.AppointmentId == appointmentId);
-                if (!hasLines)
-                    return NotFound();
+                var keys = AppointmentSchedulingService.ParseServiceKeys(appt.ServiceNeeded ?? "");
+                if (keys.Count == 0)
+                    return NotFound(new { error = "Appointment has no treatments to price." });
 
                 receipt = new Receipt
                 {
@@ -55,7 +57,7 @@ namespace OexaDentalClinic.Api.Controllers
                 await _db.SaveChangesAsync();
             }
 
-            await SyncReceiptTreatmentsAsync(receipt, appointmentId);
+            await _receiptSync.EnsureAndSyncTreatmentLinesAsync(receipt, appt);
 
             var meds = await _db.ReceiptMedications
                 .Where(m => m.ReceiptId == receipt.Id)
@@ -74,6 +76,28 @@ namespace OexaDentalClinic.Api.Controllers
                 .ToList();
             var dentists = await _db.Users.Where(u => dentistIds.Contains(u.Id)).ToDictionaryAsync(u => u.Id);
 
+            var medicationDtos = meds.Select(m => new
+            {
+                m.Id,
+                m.Name,
+                m.UnitPrice,
+                m.SubmittedByDentistUserId,
+                dentistName = FormatDentistName(dentists, m.SubmittedByDentistUserId)
+            }).ToList();
+
+            var medicationsByDentist = medicationDtos
+                .GroupBy(m => m.SubmittedByDentistUserId)
+                .OrderBy(g => g.Key ?? int.MaxValue)
+                .Select(g => new
+                {
+                    dentistUserId = g.Key,
+                    dentistName = g.Key.HasValue
+                        ? FormatDentistName(dentists, g.Key) ?? "Dentist"
+                        : "Unassigned",
+                    medications = g.ToList()
+                })
+                .ToList();
+
             return Ok(new
             {
                 receipt,
@@ -88,14 +112,8 @@ namespace OexaDentalClinic.Api.Controllers
                     dentistName = FormatDentistName(dentists, t.DentistUserId),
                     suggestedPriceEur = t.UnitPrice
                 }),
-                medications = meds.Select(m => new
-                {
-                    m.Id,
-                    m.Name,
-                    m.UnitPrice,
-                    m.SubmittedByDentistUserId,
-                    dentistName = FormatDentistName(dentists, m.SubmittedByDentistUserId)
-                })
+                medications = medicationDtos,
+                medicationsByDentist
             });
         }
 
@@ -107,11 +125,13 @@ namespace OexaDentalClinic.Api.Controllers
             if (appt.Status == "Cancelled" || appt.Status == "Booked")
                 return BadRequest(new { error = "Appointment must be checked in before submitting medications." });
 
-            var myLines = await _db.AppointmentTreatments
-                .Where(t => t.AppointmentId == dto.AppointmentId && t.AssignedDentistUserId == dto.DentistUserId)
-                .ToListAsync();
+            if (dto.DentistUserId <= 0)
+                return BadRequest(new { error = "Dentist user id is required." });
 
-            if (myLines.Count == 0)
+            var isAssigned = await _db.AppointmentTreatments.AnyAsync(t =>
+                t.AppointmentId == dto.AppointmentId && t.AssignedDentistUserId == dto.DentistUserId);
+
+            if (!isAssigned)
                 return BadRequest(new { error = "You are not assigned to this appointment." });
 
             var receipt = await _db.Receipts.FirstOrDefaultAsync(r => r.AppointmentId == dto.AppointmentId);
@@ -126,8 +146,11 @@ namespace OexaDentalClinic.Api.Controllers
                 };
                 _db.Receipts.Add(receipt);
                 await _db.SaveChangesAsync();
-                await SyncReceiptTreatmentsAsync(receipt, dto.AppointmentId);
             }
+
+            var apptForSync = await _db.Appointments.FindAsync(dto.AppointmentId);
+            if (apptForSync != null)
+                await _receiptSync.EnsureAndSyncTreatmentLinesAsync(receipt, apptForSync);
 
             var old = await _db.ReceiptMedications
                 .Where(m => m.ReceiptId == receipt.Id && m.SubmittedByDentistUserId == dto.DentistUserId)
@@ -168,13 +191,14 @@ namespace OexaDentalClinic.Api.Controllers
             var treatments = await _db.ReceiptTreatments.Where(t => t.ReceiptId == receiptId).ToListAsync();
             foreach (var line in dto.TreatmentLines)
             {
-                var tr = treatments.FirstOrDefault(t => t.AppointmentTreatmentId == line.TreatmentLineId);
+                var tr = treatments.FirstOrDefault(t => t.AppointmentTreatmentId == line.TreatmentLineId)
+                    ?? treatments.FirstOrDefault(t => t.Id == line.TreatmentLineId);
                 if (tr != null) tr.UnitPrice = line.UnitPrice;
             }
 
             var medTotal = meds.Where(m => m.UnitPrice.HasValue).Sum(m => m.UnitPrice!.Value);
             var treatmentTotal = treatments.Where(t => t.UnitPrice.HasValue).Sum(t => t.UnitPrice!.Value);
-            receipt.TotalAmount = medTotal + treatmentTotal;
+            VatHelper.ApplyToReceipt(receipt, medTotal + treatmentTotal);
             receipt.Status = "Finalized";
             await _db.SaveChangesAsync();
 
@@ -184,95 +208,23 @@ namespace OexaDentalClinic.Api.Controllers
 
             return Ok(new
             {
-                receipt,
+                receipt = new
+                {
+                    receipt.Id,
+                    receipt.ReceiptNumber,
+                    receipt.AppointmentId,
+                    receipt.Status,
+                    receipt.SubtotalBeforeVat,
+                    receipt.VatAmount,
+                    receipt.TotalAmount,
+                    vatRatePercent = VatHelper.RatePercent
+                },
                 medications = meds,
                 treatments,
-                totalEur = receipt.TotalAmount
+                subtotalBeforeVat = receipt.SubtotalBeforeVat,
+                vatAmount = receipt.VatAmount,
+                totalAfterVat = receipt.TotalAmount
             });
-        }
-
-        private async Task SyncReceiptTreatmentsAsync(Receipt receipt, int appointmentId)
-        {
-            var lines = await _db.AppointmentTreatments
-                .Where(t => t.AppointmentId == appointmentId)
-                .ToListAsync();
-            if (lines.Count == 0) return;
-
-            var existing = await _db.ReceiptTreatments
-                .Where(t => t.ReceiptId == receipt.Id)
-                .ToListAsync();
-
-            var problems = await DentalProblemLookup.LoadAllAsync(_db);
-            var allPromos = await _db.Promotions.Where(p => p.IsActive && p.ProblemKey != null).AsNoTracking().ToListAsync();
-            var activePromos = allPromos.Where(p => PromotionHelper.IsActiveOnDate(p)).ToList();
-
-            foreach (var line in lines)
-            {
-                if (existing.Any(e => e.AppointmentTreatmentId == line.Id))
-                    continue;
-
-                var problem = DentalProblemLookup.Find(problems, line.ProblemKey);
-                var name = problem?.Name ?? line.ProblemKey;
-                decimal? suggested = null;
-                if (problem != null)
-                {
-                    var promo = activePromos.FirstOrDefault(x => PromotionHelper.KeysMatch(x.ProblemKey, problem.Key));
-                    suggested = promo != null
-                        ? Math.Round(problem.BasePrice * (100 - promo.DiscountPercent) / 100m, 2)
-                        : problem.BasePrice;
-                }
-
-                _db.ReceiptTreatments.Add(new ReceiptTreatment
-                {
-                    ReceiptId = receipt.Id,
-                    AppointmentTreatmentId = line.Id,
-                    ProblemKey = line.ProblemKey,
-                    Name = name,
-                    DentistUserId = line.AssignedDentistUserId,
-                    UnitPrice = suggested
-                });
-            }
-
-            await _db.SaveChangesAsync();
-        }
-
-        private async Task<List<object>> BuildTreatmentPreviewAsync(int appointmentId, Receipt? receipt)
-        {
-            var lines = await _db.AppointmentTreatments
-                .Where(t => t.AppointmentId == appointmentId)
-                .ToListAsync();
-            if (lines.Count == 0) return new List<object>();
-
-            var problems = await DentalProblemLookup.LoadAllAsync(_db);
-            var allPromos = await _db.Promotions.Where(p => p.IsActive && p.ProblemKey != null).AsNoTracking().ToListAsync();
-            var activePromos = allPromos.Where(p => PromotionHelper.IsActiveOnDate(p)).ToList();
-            var dentistIds = lines.Where(l => l.AssignedDentistUserId.HasValue).Select(l => l.AssignedDentistUserId!.Value).Distinct().ToList();
-            var dentists = await _db.Users.Where(u => dentistIds.Contains(u.Id)).ToDictionaryAsync(u => u.Id);
-
-            return lines.Select(line =>
-            {
-                var problem = DentalProblemLookup.Find(problems, line.ProblemKey);
-                var name = problem?.Name ?? line.ProblemKey;
-                decimal? suggested = null;
-                if (problem != null)
-                {
-                    var promo = activePromos.FirstOrDefault(x => PromotionHelper.KeysMatch(x.ProblemKey, problem.Key));
-                    suggested = promo != null
-                        ? Math.Round(problem.BasePrice * (100 - promo.DiscountPercent) / 100m, 2)
-                        : problem.BasePrice;
-                }
-
-                return (object)new
-                {
-                    appointmentTreatmentId = line.Id,
-                    line.ProblemKey,
-                    name,
-                    dentistUserId = line.AssignedDentistUserId,
-                    dentistName = FormatDentistName(dentists, line.AssignedDentistUserId),
-                    suggestedPriceEur = suggested,
-                    unitPrice = suggested
-                };
-            }).ToList();
         }
 
         private static string? FormatDentistName(Dictionary<int, User> dentists, int? dentistId)

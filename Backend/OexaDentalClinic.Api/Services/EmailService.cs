@@ -105,7 +105,17 @@ namespace OexaDentalClinic.Api.Services
             var medLines = string.Join("\n", medications
                 .Where(m => m.UnitPrice.HasValue)
                 .Select(m => $"- {m.Name}: {m.UnitPrice:0.00} EUR"));
-            var body = $"Receipt {receipt.ReceiptNumber}\nTotal: {receipt.TotalAmount:0.00} EUR";
+            var subtotal = receipt.SubtotalBeforeVat > 0
+                ? receipt.SubtotalBeforeVat
+                : VatHelper.FromTotalIncludingVat(receipt.TotalAmount).Subtotal;
+            var vat = receipt.VatAmount > 0
+                ? receipt.VatAmount
+                : VatHelper.FromTotalIncludingVat(receipt.TotalAmount).Vat;
+
+            var body = $"Receipt {receipt.ReceiptNumber}\n" +
+                       $"Subtotal (before TVSH): {subtotal:0.00} EUR\n" +
+                       $"TVSH ({VatHelper.RatePercent}%): {vat:0.00} EUR\n" +
+                       $"Total (after TVSH): {receipt.TotalAmount:0.00} EUR";
             if (!string.IsNullOrWhiteSpace(treatmentLines))
                 body += "\n\nTreatments:\n" + treatmentLines;
             if (!string.IsNullOrWhiteSpace(medLines))

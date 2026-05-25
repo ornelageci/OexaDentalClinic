@@ -447,16 +447,40 @@ namespace OexaDentalClinic.Api.Controllers
             {
                 var meds = await _db.ReceiptMedications.AsNoTracking()
                     .Where(m => m.ReceiptId == receipt.Id)
-                    .OrderBy(m => m.Id)
+                    .OrderBy(m => m.SubmittedByDentistUserId)
+                    .ThenBy(m => m.Id)
+                    .ToListAsync();
+                var medDentistIds = meds.Where(m => m.SubmittedByDentistUserId.HasValue)
+                    .Select(m => m.SubmittedByDentistUserId!.Value).Distinct().ToList();
+                var medDentists = medDentistIds.Count > 0
+                    ? await _db.Users.AsNoTracking().Where(u => medDentistIds.Contains(u.Id))
+                        .ToDictionaryAsync(u => u.Id, u => $"Dr. {u.FirstName} {u.LastName}")
+                    : new Dictionary<int, string>();
+                var receiptTreatments = await _db.ReceiptTreatments.AsNoTracking()
+                    .Where(t => t.ReceiptId == receipt.Id)
+                    .OrderBy(t => t.Id)
                     .ToListAsync();
                 receiptInfo = new
                 {
                     receipt.Id,
                     receipt.ReceiptNumber,
                     receipt.Status,
+                    receipt.SubtotalBeforeVat,
+                    receipt.VatAmount,
                     receipt.TotalAmount,
                     isFinalized = receipt.Status == "Finalized",
-                    medications = meds.Select(m => new { m.Id, m.Name, m.UnitPrice })
+                    medications = meds.Select(m => new
+                    {
+                        m.Id,
+                        m.Name,
+                        m.UnitPrice,
+                        m.SubmittedByDentistUserId,
+                        dentistName = m.SubmittedByDentistUserId.HasValue &&
+                            medDentists.TryGetValue(m.SubmittedByDentistUserId.Value, out var dn)
+                            ? dn
+                            : null
+                    }),
+                    treatments = receiptTreatments.Select(t => new { t.Id, t.Name, t.UnitPrice })
                 };
             }
 
@@ -858,33 +882,8 @@ namespace OexaDentalClinic.Api.Controllers
                 await EnsureTreatmentLinesAsync(appt);
         }
 
-        private async Task EnsureTreatmentLinesAsync(Appointment appt)
-        {
-            if (await _db.AppointmentTreatments.AnyAsync(t => t.AppointmentId == appt.Id))
-                return;
-
-            var keys = AppointmentSchedulingService.ParseServiceKeys(appt.ServiceNeeded);
-            var allProblems = await DentalProblemLookup.LoadAllAsync(_db);
-            var created = new List<AppointmentTreatment>();
-            foreach (var key in keys)
-            {
-                var problem = DentalProblemLookup.Find(allProblems, key);
-                var duration = problem?.DurationMinutes > 0 ? problem!.DurationMinutes : 60;
-                var line = new AppointmentTreatment
-                {
-                    AppointmentId = appt.Id,
-                    ProblemKey = problem?.Key ?? key,
-                    ScheduledStart = appt.PreferredDateTime,
-                    DurationMinutes = duration,
-                    AssignedDentistUserId = keys.Count == 1 ? appt.AssignedDentistUserId : null
-                };
-                created.Add(line);
-                _db.AppointmentTreatments.Add(line);
-            }
-
-            _scheduling.ApplySequentialSchedule(created, appt.PreferredDateTime);
-            await _db.SaveChangesAsync();
-        }
+        private Task EnsureTreatmentLinesAsync(Appointment appt) =>
+            _scheduling.EnsureTreatmentLinesAsync(appt);
 
         private async Task SyncAppointmentHeaderAsync(Appointment appt, List<AppointmentTreatment> lines)
         {

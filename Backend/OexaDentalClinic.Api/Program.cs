@@ -23,6 +23,7 @@ builder.Services.PostConfigure<EmailSettings>(options =>
 });
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<AppointmentSchedulingService>();
+builder.Services.AddScoped<ReceiptSyncService>();
 builder.Services.AddHostedService<AppointmentReminderService>();
 
 builder.Services.AddCors(options =>

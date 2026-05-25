@@ -236,6 +236,37 @@ namespace OexaDentalClinic.Api.Services
             }
         }
 
+        /// <summary>Creates treatment lines from ServiceNeeded when missing (legacy bookings).</summary>
+        public async Task EnsureTreatmentLinesAsync(Appointment appt)
+        {
+            if (await _db.AppointmentTreatments.AnyAsync(t => t.AppointmentId == appt.Id))
+                return;
+
+            var keys = ParseServiceKeys(appt.ServiceNeeded ?? "");
+            if (keys.Count == 0) return;
+
+            var allProblems = await DentalProblemLookup.LoadAllAsync(_db);
+            var created = new List<AppointmentTreatment>();
+            foreach (var key in keys)
+            {
+                var problem = DentalProblemLookup.Find(allProblems, key);
+                var duration = problem?.DurationMinutes > 0 ? problem!.DurationMinutes : 60;
+                var line = new AppointmentTreatment
+                {
+                    AppointmentId = appt.Id,
+                    ProblemKey = problem?.Key ?? key,
+                    ScheduledStart = appt.PreferredDateTime,
+                    DurationMinutes = duration,
+                    AssignedDentistUserId = keys.Count == 1 ? appt.AssignedDentistUserId : null
+                };
+                created.Add(line);
+                _db.AppointmentTreatments.Add(line);
+            }
+
+            ApplySequentialSchedule(created, appt.PreferredDateTime);
+            await _db.SaveChangesAsync();
+        }
+
         public void RecalculateUnassignedLineStarts(List<AppointmentTreatment> lines, DateTime windowStart)
         {
             var ordered = OrderLinesShorterFirst(lines);

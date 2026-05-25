@@ -20,6 +20,60 @@ namespace OexaDentalClinic.Api.Data
 
             EnsureDurationMinutesColumn(db, logger);
             EnsureAppointmentTreatmentsTable(db, logger);
+            EnsureRoleAndCategoryTables(db, logger);
+        }
+
+        private static void EnsureRoleAndCategoryTables(AppDbContext db, ILogger logger)
+        {
+            var rolesTable = db.Database.SqlQueryRaw<int>(
+                """
+                SELECT COUNT(*) AS Value
+                FROM INFORMATION_SCHEMA.TABLES
+                WHERE TABLE_SCHEMA = DATABASE()
+                  AND TABLE_NAME = 'UserRoleDefinitions'
+                """
+            ).AsEnumerable().FirstOrDefault();
+
+            if (rolesTable == 0)
+            {
+                logger.LogWarning("UserRoleDefinitions table missing — applying schema repair.");
+                db.Database.ExecuteSqlRaw(
+                    """
+                    CREATE TABLE `UserRoleDefinitions` (
+                        `Id` int NOT NULL AUTO_INCREMENT,
+                        `Key` varchar(30) NOT NULL,
+                        `DisplayName` varchar(80) NOT NULL,
+                        `SortOrder` int NOT NULL,
+                        `IsSystem` tinyint(1) NOT NULL,
+                        PRIMARY KEY (`Id`)
+                    )
+                    """);
+            }
+
+            var catTable = db.Database.SqlQueryRaw<int>(
+                """
+                SELECT COUNT(*) AS Value
+                FROM INFORMATION_SCHEMA.TABLES
+                WHERE TABLE_SCHEMA = DATABASE()
+                  AND TABLE_NAME = 'DentistCategories'
+                """
+            ).AsEnumerable().FirstOrDefault();
+
+            if (catTable == 0)
+            {
+                logger.LogWarning("DentistCategories table missing — applying schema repair.");
+                db.Database.ExecuteSqlRaw(
+                    """
+                    CREATE TABLE `DentistCategories` (
+                        `Id` int NOT NULL AUTO_INCREMENT,
+                        `Key` varchar(50) NOT NULL,
+                        `DisplayName` varchar(100) NOT NULL,
+                        `SortOrder` int NOT NULL,
+                        PRIMARY KEY (`Id`)
+                    )
+                    """);
+            }
+
         }
 
         private static void EnsureDurationMinutesColumn(AppDbContext db, ILogger logger)

@@ -8,6 +8,51 @@
     box-shadow: 0 2px 4px rgba(0,0,0,0.08);
 }
 
+.admin-nav-link {
+    color: #1e3a8a;
+    background: #f0f4fa;
+    border: 1px solid #c7d6eb;
+    text-decoration: none;
+}
+
+.admin-nav-link:hover {
+    color: #1e3a8a;
+    background: #e2eaf5;
+    border-color: #9eb8d9;
+}
+
+.admin-nav-link--active {
+    color: #fff;
+    background: #1e3a8a;
+    border-color: #1e3a8a;
+    font-weight: 600;
+    box-shadow: 0 2px 6px rgba(30, 58, 138, 0.35);
+}
+
+.admin-nav-link--active:hover {
+    color: #fff;
+    background: #1a3278;
+    border-color: #1a3278;
+}
+
+.rev-period-picker .rev-period-year {
+    width: 4.75rem;
+    text-align: center;
+}
+
+.rev-period-picker .rev-period-month {
+    width: 3.25rem;
+    text-align: center;
+}
+
+.rev-period-sep {
+    font-weight: 700;
+    font-size: 1.15rem;
+    color: #64748b;
+    user-select: none;
+    line-height: 1;
+}
+
 .portal-card {
     border: none;
     border-radius: 12px;
