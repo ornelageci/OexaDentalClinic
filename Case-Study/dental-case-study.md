@@ -1,172 +1,203 @@
-## Case Study – Dental Clinic Management System
+# Case Study – Oexa Dental Clinic Management System
 
-# Overview
-The Dental Clinic Management System is a software solution designed to manage the daily operations of a dental clinic. It allows patients, dentists, and administrative staff to interact efficiently by handling appointments, treatments, and clinic data.
+## Overview
 
-# Actors
-Patient – books appointments and views history
-Dentist – manages appointments and treatments
-Manager (Admin) – manages system data and reports
-Marketer – manages promotions and communication
+Oexa Dental Clinic is a **web application** for managing day-to-day clinic operations: patient self-service booking, multi-dentist treatment scheduling, clinical completion, itemised receipts with **20% TVSH (VAT)**, promotional campaigns, and admin revenue reporting. The solution uses an **ASP.NET Core** REST API, **MySQL** database, and a **multi-page HTML/JavaScript** frontend with role-based portals.
 
-# Scenario 1 – Patient Books an Appointment
-Initial Assumption
-The patient has a registered account.
+## Actors
 
-Normal Flow
-The patient logs into the system.
-The patient selects a dentist.
-The patient chooses a date and time.
-The system checks availability.
-The appointment is saved in the database.
-A confirmation email is sent to the patient.
+| Actor | Description |
+|-------|-------------|
+| **Patient** | Registers, books appointments (including paediatric/special), views history and offers, cancels, receives emails, rates dentists |
+| **Dentist** | Views schedule, completes assigned treatment lines, submits medications on receipts |
+| **Manager (receptionist)** | Assigns/reschedules dentists per treatment, sets receipt prices, finalizes receipts, manages day-to-day appointments |
+| **Admin** | Manages users and treatment catalog, views all appointments, runs **Revenue** reports by month or year |
+| **Marketer** | Creates and maintains promotions and customer loyalty categories |
 
-What Can Go Wrong
-The selected time slot is already booked.
-A system or database error occurs.
-The email fails to send.
+## State-driven domains
 
-System State on Completion
-The appointment is stored and appears in:
-the patient’s dashboard
-the dentist’s schedule
+Behaviour of key entities is documented in `Diagrams/StateDiagrams/`:
 
-# Scenario 2 – Dentist Completes an Appointment
-Initial Assumption
-The appointment exists and the patient arrives.
+| Domain | Diagram | Typical states |
+|--------|---------|----------------|
+| Appointment | `Appointment State Diagram-Page-1.drawio.png` | Booked → InProgress → Completed / Cancelled |
+| Treatment line | `Treatment State Diagram-Page-2.drawio.png` | Unassigned → Assigned → Completed (per dentist) |
+| Medications | `Prescription State Diagram-Page-5.drawio.png` | Submitted by dentist on draft receipt |
+| Receipt | `Receipt State Diagram-Page-6.drawio.png` | Draft → priced → Finalized (with VAT breakdown) |
+| Promotion | `Promotion State Diagram-Page-7.drawio.png` | Draft / active / expired campaigns |
 
-Normal Flow
-The dentist opens the appointment list.
-Selects the active appointment.
-Performs the dental treatment.
-Records:
-diagnosis
-treatment performed
-recommendations
-Marks the appointment as “Completed”.
+---
 
-What Can Go Wrong
-The patient does not show up (no-show).
-Data fails to save.
-Technical issues occur.
+## Scenario 1 – Patient registers and books an appointment
 
-System State on Completion
-Appointment status is “Completed”
-Patient medical history is updated
+**Actors:** Patient  
+**Related UC:** UC_01, UC_02, UC_03  
+**Diagram:** Appointment  
 
-# Scenario 3 – Patient Views Appointment History
-Initial Assumption
-The patient has previous appointments.
+**Assumption:** Patient has no account yet (or is logged in).
 
-Normal Flow
-The patient logs into the system.
-Navigates to “My Appointments”.
-The system displays appointment history.
-The patient can view details.
+**Normal flow**
+1. Patient registers on the public site with personal details.
+2. Patient logs in and opens **Book Appointment**.
+3. Patient selects dental problem(s), preferred date/time, and optional notes.
+4. System creates appointment in **Booked** status with treatment lines (dentists not yet assigned).
+5. Confirmation email is sent to the patient (and staff when configured).
 
-What Can Go Wrong
-No appointments exist.
-Data loading error occurs.
+**What can go wrong**
+- Invalid or duplicate email on registration.
+- Preferred slot conflicts with clinic rules.
+- Email delivery fails (appointment still saved).
 
-System State on Completion
-The patient successfully views their appointment history.
+**Outcome:** Appointment visible in patient **My Appointments** and in manager queue for dentist assignment.
 
-# Scenario 4 – Manager Manages Dentists
-Initial Assumption
-The manager has admin access.
+---
 
-Normal Flow
-The manager logs in.
-Navigates to “Manage Dentists”.
-Can:
-add a new dentist
-update dentist information
-delete a dentist
-The system saves changes.
+## Scenario 2 – Manager assigns dentists (reception workflow)
 
-What Can Go Wrong
-Invalid input data
-Database conflicts
+**Actors:** Manager  
+**Related UC:** UC_15, UC_20  
+**Diagram:** Treatment, Appointment  
 
-System State on Completion
-Dentist records are updated in the system.
+**Assumption:** Appointment is **Booked** with unassigned treatment lines.
 
-# Scenario 5 – Manager Views Reports
-Initial Assumption
-The system contains operational data.
+**Normal flow**
+1. Manager opens the manager dashboard and selects the appointment.
+2. For each treatment line, manager picks a dentist matching the problem category (general, orthodontics, paediatric, etc.).
+3. System checks dentist availability and sequential scheduling within the patient window.
+4. Assignments are saved; patient may receive updated timing by email.
 
-Normal Flow
-The manager opens the dashboard.
-Selects a report type:
-number of appointments
-revenue
-most active dentists
-The system generates and displays the report.
+**What can go wrong**
+- No dentist available in the selected slot → manager reschedules line or whole visit.
+- Category mismatch (e.g. paediatric problem assigned to non-paediatric dentist).
 
-What Can Go Wrong
-Insufficient data
-Query or system error
+**Outcome:** All lines assigned; visit can proceed to **InProgress** when patient arrives.
 
-System State on Completion
-Reports are displayed correctly in the interface.
+---
 
-# Scenario 6 – Marketer Creates Promotion
-Initial Assumption
-The marketer has system access.
+## Scenario 3 – Dentist completes treatment and submits medications
 
-Normal Flow
-The marketer logs in.
-Creates a promotion (e.g., “Teeth Whitening -20%”).
-Defines:
-start and end date
-target audience
-The system saves and publishes the promotion.
+**Actors:** Dentist  
+**Related UC:** UC_10, UC_11, UC_13  
+**Diagram:** Treatment, Prescription  
 
-What Can Go Wrong
-Invalid dates
-Promotion fails to activate
+**Assumption:** Dentist is assigned to at least one line on an active appointment.
 
-System State on Completion
-The promotion is visible to users on the platform.
+**Normal flow**
+1. Dentist views today’s schedule on the dentist dashboard.
+2. Dentist marks their treatment line(s) as completed.
+3. When all assigned dentists finish, appointment moves to **Completed**.
+4. Dentist opens **Receipt** for the visit and adds medications (name, quantity, notes) for their part only.
 
-# Scenario 7 – Patient Cancels an Appointment
-Initial Assumption
-An appointment exists.
+**What can go wrong**
+- Dentist tries to complete another dentist’s line → denied.
+- Medications submitted before visit is in progress → validation error.
 
-Normal Flow
-The patient logs in.
-Selects the appointment.
-Clicks “Cancel”.
-The system updates the status to “Cancelled”.
-The dentist is notified.
+**Outcome:** Clinical work recorded; draft receipt contains treatment lines and per-dentist medications.
 
-What Can Go Wrong
-Cancellation not allowed (too close to appointment time)
-System error
+---
 
-System State on Completion
-The appointment is no longer active.
+## Scenario 4 – Manager finalizes receipt with TVSH
 
-# Scenario 8 – User Authentication (Login)
-Initial Assumption
-The user is registered.
+**Actors:** Manager  
+**Related UC:** UC_18, UC_19  
+**Diagram:** Receipt  
 
-Normal Flow
-The user enters email and password.
-The system validates credentials.
-A token (e.g., JWT) is generated.
-The user is redirected to their dashboard based on role.
+**Assumption:** Appointment **Completed**; receipt in **Draft**.
 
-What Can Go Wrong
-Incorrect credentials
-Token generation failure
+**Normal flow**
+1. Manager opens receipt: treatments and medications grouped by dentist.
+2. Manager enters or confirms unit prices for each line.
+3. System calculates **subtotal**, **20% VAT (TVSH)**, and **total**.
+4. Manager finalizes receipt → status **Finalized**.
 
-System State on Completion
-The user is authenticated and authorized.
+**What can go wrong**
+- Missing prices on lines → cannot finalize.
+- Old appointments without treatment lines → sync service backfills from `ServiceNeeded` where possible.
+
+**Outcome:** Patient and admin can view finalized totals; receipt included in revenue reports.
+
+---
+
+## Scenario 5 – Admin views revenue for a period
+
+**Actors:** Admin  
+**Related UC:** UC_25  
+**Diagram:** Receipt (financial view)  
+
+**Assumption:** At least one finalized receipt exists for the selected period.
+
+**Normal flow**
+1. Admin opens **Revenue** (`admin/reports.html`).
+2. Admin enters period as `YYYY-MM` (e.g. `2026-06`) or `YYYY-00` for full year.
+3. System lists finalized receipts with breakdown per dentist (treatments + medications, VAT).
+4. Summary shows total revenue, subtotal, and VAT for the period.
+
+**What can go wrong**
+- No finalized receipts in period → empty list with zero totals.
+- Invalid period format → validation message.
+
+**Outcome:** Financial overview for management decisions.
+
+---
+
+## Scenario 6 – Marketer publishes a promotion
+
+**Actors:** Marketer, Patient  
+**Related UC:** UC_16, UC_06, UC_24  
+**Diagram:** Promotion  
+
+**Assumption:** Marketer is logged into the marketer dashboard.
+
+**Normal flow**
+1. Marketer creates a promotion (title, discount, validity dates, target categories).
+2. System stores and activates the campaign.
+3. Patient opens **Offers** on the public site and sees active promotions.
+
+**What can go wrong**
+- End date before start date → rejected.
+- Expired promotion hidden from patients automatically.
+
+**Outcome:** Promotion visible to patients within validity window.
+
+---
+
+## Scenario 7 – Patient cancels and receives notification
+
+**Actors:** Patient  
+**Related UC:** UC_08  
+**Diagram:** Appointment  
+
+**Normal flow**
+1. Patient opens **My Appointments** and selects a future **Booked** visit.
+2. Patient confirms cancellation.
+3. Status becomes **Cancelled**; email sent to patient (and dentist/manager as configured).
+
+**Outcome:** Slot freed; appointment no longer appears as upcoming.
+
+---
+
+## Scenario 8 – Staff authentication (all roles)
+
+**Actors:** Patient, Dentist, Manager, Admin, Marketer  
+**Related UC:** UC_02  
+
+**Normal flow**
+1. User opens patient login or **staff portal** login.
+2. User enters email and password.
+3. API validates credentials and returns role.
+4. Frontend redirects to the correct dashboard (or public home for patient).
+
+**Outcome:** Session established; UI shows only actions allowed for that role.
+
+---
 
 ## Conclusion
-This system:
-Improves clinic organization
-Reduces manual errors
-Enhances patient experience
-Supports better decision-making through reports
+
+The system:
+
+- **Organises** multi-dentist visits and reception assignment in one place  
+- **Reduces errors** in scheduling and billing through structured states and VAT rules  
+- **Improves patient experience** with booking, reminders, offers, and transparent receipts  
+- **Supports decisions** via admin dashboard and revenue reporting  
+
+Formal requirements are captured in **25 use cases** (`User-Cases/`, UC_01–UC_25) and **state diagrams** under `Diagrams/StateDiagrams/`.
