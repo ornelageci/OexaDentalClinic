@@ -2,7 +2,11 @@
 
 > A web-based platform that digitalises clinic operations — connecting **patients**, **dentists**, **managers (reception)**, **admins**, and **marketers** through role-specific portals backed by a single ASP.NET Core API.
 
----
+<img width="1882" height="1018" alt="image" src="https://github.com/user-attachments/assets/965f0e08-aa17-4ebd-80b0-630ae6af64de" />
+<img width="1862" height="1021" alt="image" src="https://github.com/user-attachments/assets/b436314d-aa0d-4123-98c5-de9abb7ab88d" />
+<img width="1871" height="871" alt="image" src="https://github.com/user-attachments/assets/3a17e163-b885-4d71-9116-34160e0cf5f2" />
+<img width="1870" height="1002" alt="image" src="https://github.com/user-attachments/assets/aadb7164-616d-4730-8d2d-05d131ec1535" />
+
 
 ## Project Overview
 
